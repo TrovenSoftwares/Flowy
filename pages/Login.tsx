@@ -188,6 +188,8 @@ const Login: React.FC = () => {
               </button>
             </form>
 
+            {/* Social Login Oculto Temporariamente */}
+            {/* 
             <div className="relative flex py-2 items-center">
               <div className="flex-grow border-t border-slate-200 dark:border-slate-700"></div>
               <span className="flex-shrink-0 mx-4 text-slate-400 text-xs uppercase font-bold tracking-wider">ou continue com</span>
@@ -210,6 +212,7 @@ const Login: React.FC = () => {
                 Microsoft
               </button>
             </div>
+            */}
 
             {/* Mobile Only Create Account Link */}
             <div className="mt-4 text-center sm:hidden">

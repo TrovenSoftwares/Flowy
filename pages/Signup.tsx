@@ -98,7 +98,8 @@ const Signup: React.FC = () => {
           </div>
 
           <div className="mt-8">
-            {/* Social Login */}
+            {/* Social Login Oculto Temporariamente */}
+            {/* 
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={() => handleSocialLogin('google')}
@@ -116,7 +117,6 @@ const Signup: React.FC = () => {
               </button>
             </div>
 
-            {/* Divider */}
             <div className="relative mt-6">
               <div aria-hidden="true" className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-slate-200 dark:border-slate-700"></div>
@@ -125,6 +125,7 @@ const Signup: React.FC = () => {
                 <span className="px-2 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400">Ou continue com email</span>
               </div>
             </div>
+            */}
 
             {/* Form Fields */}
             <form onSubmit={handleSubmit} className="mt-6 space-y-5">
@@ -309,7 +310,7 @@ const Signup: React.FC = () => {
               <span className="text-white/80 text-sm font-medium">+2.5k empresas confiam</span>
             </div>
             <h3 className="text-2xl font-bold text-white mb-2 leading-snug">
-              "O FinanceAI transformou nosso WhatsApp em uma máquina de controle financeiro."
+              "O Versix AI transformou nosso WhatsApp em uma máquina de controle financeiro."
             </h3>
             <div className="mt-4 flex items-center gap-2">
               <span className="material-symbols-outlined text-green-400 filled">check_circle</span>
