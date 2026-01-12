@@ -669,9 +669,18 @@ const IntegrationConfig: React.FC = () => {
                       Automação Real-time (n8n)
                       <Tooltip content="Envie todas as mensagens para um fluxo n8n para processamento externo." position="right" />
                     </h3>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isWebhookActive ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-500'}`}>
-                      {isWebhookActive ? 'WEBHOOK ATIVO' : 'WEBHOOK INATIVO'}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setShowGroqKey(!showGroqKey)}
+                        className="text-primary hover:text-primary/80 transition-colors"
+                        title={showGroqKey ? "Ocultar URL" : "Ver URL"}
+                      >
+                        <span className="material-symbols-outlined text-[18px]">{showGroqKey ? 'visibility_off' : 'visibility'}</span>
+                      </button>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isWebhookActive ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-500'}`}>
+                        {isWebhookActive ? 'WEBHOOK ATIVO' : 'WEBHOOK INATIVO'}
+                      </span>
+                    </div>
                   </div>
                   <div className="flex flex-col gap-3">
                     <div className="relative">

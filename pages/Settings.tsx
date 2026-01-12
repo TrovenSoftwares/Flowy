@@ -477,6 +477,29 @@ const Settings: React.FC = () => {
                       />
                     </div>
                   </div>
+
+                  {/* Gemini Input */}
+                  <div className="group">
+                    <label className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-blue-400"></span>
+                        Google Gemini (IA Integrada)
+                      </span>
+                      <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded text-slate-600 dark:text-slate-400 hover:text-primary transition-colors">Obter Chave</a>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        value={aiConfig.geminiKey || ''}
+                        onChange={e => setAiConfig(prev => ({ ...prev, geminiKey: e.target.value }))}
+                        placeholder="AIza..."
+                        className="w-full pl-4 pr-10 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-mono text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                      />
+                      <div className="absolute right-3 top-3 text-slate-400">
+                        {aiConfig.geminiKey && <span className="material-symbols-outlined text-[20px] text-green-500">check_circle</span>}
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-end">
@@ -519,7 +542,7 @@ const Settings: React.FC = () => {
 
                       <div className="flex gap-2">
                         <input
-                          type="text"
+                          type={showPassword ? "text" : "password"}
                           value={aiConfig.webhookUrl || ''}
                           onChange={e => setAiConfig(prev => ({ ...prev, webhookUrl: e.target.value }))}
                           placeholder="https://seu-n8n.com/webhook/..."
