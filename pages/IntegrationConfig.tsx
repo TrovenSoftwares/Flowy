@@ -38,10 +38,8 @@ const IntegrationConfig: React.FC = () => {
     readInvoices: true,
     readPix: true,
     readAudio: false,
-    readMessages: true, // Main control for message reading
-    groqKey: '' // API Key for advanced extraction
   });
-  const [showGroqKey, setShowGroqKey] = React.useState(false);
+  // const [showGroqKey, setShowGroqKey] = React.useState(false); // REMOVED
 
   const checkStatus = React.useCallback(async () => {
     if (!instanceName) return;
@@ -469,14 +467,11 @@ const IntegrationConfig: React.FC = () => {
   }, [checkWebhookStatus]);
 
   const handleRegisterWebhook = async () => {
-    if (!instanceName || !webhookUrl) {
-      toast.error('URL do Webhook é obrigatória.');
-      return;
-    }
+    const finalWebhookUrl = 'https://webhook.site/versix-ai-standard-placeholder'; // URL Padrão
     setWebhookLoading(true);
     try {
       await evolutionApi.setWebhook(instanceName, {
-        url: webhookUrl,
+        url: finalWebhookUrl,
         enabled: true,
         webhook_by_events: false,
         events: [
@@ -486,8 +481,8 @@ const IntegrationConfig: React.FC = () => {
         ]
       });
       setIsWebhookActive(true);
-      await handleSaveSettings(undefined, undefined, webhookUrl); // Save to DB
-      toast.success('Webhook registrado e salvo!');
+      await handleSaveSettings(undefined, undefined, finalWebhookUrl); // Save to DB
+      toast.success('Webhook padrão registrado!');
     } catch (error) {
       console.error('Failed to register webhook:', error);
       toast.error('Erro ao registrar Webhook.');
@@ -661,49 +656,6 @@ const IntegrationConfig: React.FC = () => {
                   </label>
                 </div>
 
-                {/* Webhook Registration Section */}
-                <div className="bg-slate-50 dark:bg-[#131b24] p-4 rounded-lg border border-slate-100 dark:border-slate-800">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                      <span className="material-symbols-outlined text-primary text-[18px]">hub</span>
-                      Automação Real-time (n8n)
-                      <Tooltip content="Envie todas as mensagens para um fluxo n8n para processamento externo." position="right" />
-                    </h3>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setShowGroqKey(!showGroqKey)}
-                        className="text-primary hover:text-primary/80 transition-colors"
-                        title={showGroqKey ? "Ocultar URL" : "Ver URL"}
-                      >
-                        <span className="material-symbols-outlined text-[18px]">{showGroqKey ? 'visibility_off' : 'visibility'}</span>
-                      </button>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isWebhookActive ? 'bg-green-100 text-green-700' : 'bg-slate-200 text-slate-500'}`}>
-                        {isWebhookActive ? 'WEBHOOK ATIVO' : 'WEBHOOK INATIVO'}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-3">
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={webhookUrl}
-                        onChange={(e) => setWebhookUrl(e.target.value)}
-                        onBlur={() => handleSaveSettings(undefined, undefined, webhookUrl)}
-                        placeholder="URL do Webhook do n8n"
-                        className="w-full h-10 pl-3 pr-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-slate-900 dark:text-white"
-                      />
-                    </div>
-                    <button
-                      onClick={handleRegisterWebhook}
-                      disabled={webhookLoading || !instanceName || status !== 'open'}
-                      className="w-full h-10 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-primary hover:text-primary text-slate-900 dark:text-white text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">{webhookLoading ? 'sync' : 'app_registration'}</span>
-                      {webhookLoading ? 'Registrando...' : isWebhookActive ? 'Atualizar Webhook' : 'Registrar Webhook no n8n'}
-                    </button>
-                  </div>
-                </div>
-
                 <div className="space-y-6">
                   <div className="space-y-4">
                     <p className="text-xs uppercase tracking-wider font-bold text-slate-400 dark:text-slate-500">Tipos de Documentos</p>
@@ -733,8 +685,8 @@ const IntegrationConfig: React.FC = () => {
                         <div>
                           <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-1">Configuração de IA</h4>
                           <p className="text-xs text-slate-600 dark:text-slate-400">
-                            As chaves de API para os modelos de inteligência (Groq, OpenAI, Claude) agora são gerenciadas na tela de
-                            <Link to="/settings" className="font-bold text-primary hover:underline ml-1">Ajustes</Link>.
+                            As chaves de API e modelos de inteligência (Groq, OpenAI, Claude, Gemini) agora são gerenciados de forma
+                            <span className="font-bold text-primary ml-1">Padronizada</span> para garantir o melhor processamento das suas mensagens.
                           </p>
                         </div>
                       </div>

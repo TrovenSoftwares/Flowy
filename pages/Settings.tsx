@@ -394,202 +394,19 @@ const Settings: React.FC = () => {
                 <span className="material-symbols-outlined absolute right-[-20px] bottom-[-40px] text-[180px] text-white/10 rotate-12">smart_toy</span>
               </div>
 
-              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 shadow-sm">
-                <div className="flex items-center justify-between mb-8">
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <span className="material-symbols-outlined text-primary">key</span>
-                    Chaves de API
-                  </h3>
-                  <button
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
-                  >
-                    <span className="material-symbols-outlined text-[16px]">{showPassword ? 'visibility_off' : 'visibility'}</span>
-                    {showPassword ? 'Ocultar Chaves' : 'Mostrar Chaves'}
-                  </button>
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 shadow-sm text-center">
+                <div className="bg-primary/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <span className="material-symbols-outlined text-4xl text-primary">verified</span>
                 </div>
-
-                <div className="space-y-6">
-                  {/* Groq Input */}
-                  <div className="group">
-                    <label className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                        Groq API (Recomendado)
-                      </span>
-                      <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer" className="text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded text-slate-600 dark:text-slate-400 hover:text-primary transition-colors">Obter Chave</a>
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        value={aiConfig.groqKey}
-                        onChange={e => setAiConfig(prev => ({ ...prev, groqKey: e.target.value }))}
-                        placeholder="gsk_..."
-                        className="w-full pl-4 pr-10 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-mono text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-                      />
-                      <div className="absolute right-3 top-3 text-slate-400">
-                        {aiConfig.groqKey && <span className="material-symbols-outlined text-[20px] text-green-500">check_circle</span>}
-                      </div>
-                    </div>
-                    <p className="text-[11px] text-slate-500 mt-1.5 ml-1">Modelo Llama 3 ultra-rápido para processamento em tempo real.</p>
-                  </div>
-
-                  {/* Anthropic Input */}
-                  <div className="group">
-                    <label className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-                        Anthropic Claude (Excelente)
-                      </span>
-                      <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer" className="text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded text-slate-600 dark:text-slate-400 hover:text-primary transition-colors">Obter Chave</a>
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        value={aiConfig.anthropicKey}
-                        onChange={e => setAiConfig(prev => ({ ...prev, anthropicKey: e.target.value }))}
-                        placeholder="sk-ant-..."
-                        className="w-full pl-4 pr-10 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-mono text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-                      />
-                      <div className="absolute right-3 top-3 text-slate-400">
-                        {aiConfig.anthropicKey && <span className="material-symbols-outlined text-[20px] text-green-500">check_circle</span>}
-                      </div>
-                    </div>
-                    <p className="text-[11px] text-slate-500 mt-1.5 ml-1">Claude 3.5 Sonnet para interpretação complexa de contextos.</p>
-                  </div>
-
-                  {/* OpenAI Input */}
-                  <div className="group opacity-90 hover:opacity-100 transition-opacity">
-                    <label className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-slate-400"></span>
-                        OpenAI (GPT-4)
-                      </span>
-                      <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer" className="text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded text-slate-600 dark:text-slate-400 hover:text-primary transition-colors">Obter Chave</a>
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        value={aiConfig.openAIKey}
-                        onChange={e => setAiConfig(prev => ({ ...prev, openAIKey: e.target.value }))}
-                        placeholder="sk-..."
-                        className="w-full pl-4 pr-10 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-mono text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Gemini Input */}
-                  <div className="group">
-                    <label className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-blue-400"></span>
-                        Google Gemini (IA Integrada)
-                      </span>
-                      <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded text-slate-600 dark:text-slate-400 hover:text-primary transition-colors">Obter Chave</a>
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? "text" : "password"}
-                        value={aiConfig.geminiKey || ''}
-                        onChange={e => setAiConfig(prev => ({ ...prev, geminiKey: e.target.value }))}
-                        placeholder="AIza..."
-                        className="w-full pl-4 pr-10 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-mono text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-                      />
-                      <div className="absolute right-3 top-3 text-slate-400">
-                        {aiConfig.geminiKey && <span className="material-symbols-outlined text-[20px] text-green-500">check_circle</span>}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-end">
-                  <button
-                    onClick={handleSaveAI}
-                    disabled={saving}
-                    className="bg-primary hover:bg-primary/90 text-white font-bold py-3 px-8 rounded-xl shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed flex items-center gap-2"
-                  >
-                    {saving ? <span className="material-symbols-outlined animate-spin text-[20px]">sync</span> : <span className="material-symbols-outlined text-[20px]">save</span>}
-                    Salvar Configuração
-                  </button>
-                </div>
-              </div>
-
-              {/* Automation / Webhook Section */}
-              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 shadow-sm">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <span className="material-symbols-outlined text-primary">hub</span>
-                    Automação e Webhooks
-                  </h3>
-                  <span className="text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded text-slate-500 font-bold border border-slate-200 dark:border-slate-700">
-                    Opcional
-                  </span>
-                </div>
-
-                <div className="bg-slate-50 dark:bg-slate-800/50 p-6 rounded-xl border border-slate-100 dark:border-slate-800 space-y-4">
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-lg bg-white dark:bg-slate-700 flex items-center justify-center shadow-sm shrink-0">
-                      <span className="material-symbols-outlined text-primary">webhook</span>
-                    </div>
-                    <div className="flex-1">
-                      <label className="text-sm font-bold text-slate-900 dark:text-white block mb-1">
-                        Webhook n8n / Typebot
-                      </label>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
-                        Envie todas as mensagens recebidas para um fluxo de automação externo (n8n, Typebot, etc).
-                        Isso permite criar agentes complexos que respondem antes da nossa IA financeira.
-                      </p>
-
-                      <div className="flex gap-2">
-                        <input
-                          type={showPassword ? "text" : "password"}
-                          value={aiConfig.webhookUrl || ''}
-                          onChange={e => setAiConfig(prev => ({ ...prev, webhookUrl: e.target.value }))}
-                          placeholder="https://seu-n8n.com/webhook/..."
-                          className="flex-1 px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                        />
-                        <button
-                          onClick={async () => {
-                            if (!instanceName) {
-                              toast.error('Configure o WhatsApp primeiro.');
-                              return;
-                            }
-                            if (!aiConfig.webhookUrl) {
-                              toast.error('URL obrigatória.');
-                              return;
-                            }
-                            setSaving(true);
-                            try {
-                              await evolutionApi.setWebhook(instanceName, {
-                                url: aiConfig.webhookUrl,
-                                enabled: true,
-                                webhook_by_events: false,
-                                events: ["MESSAGES_UPSERT", "MESSAGES_UPDATE", "MESSAGES_DELETE"]
-                              });
-                              await handleSaveAI();
-                              toast.success('Webhook registrado na Evolution!');
-                            } catch (e) {
-                              console.error(e);
-                              toast.error('Erro ao registrar webhook.');
-                            } finally {
-                              setSaving(false);
-                            }
-                          }}
-                          disabled={saving || !instanceName}
-                          className="px-4 py-2 bg-slate-900 dark:bg-slate-700 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-colors disabled:opacity-50 flex items-center gap-2"
-                        >
-                          <span className="material-symbols-outlined text-[18px]">app_registration</span>
-                          Registrar
-                        </button>
-                      </div>
-                      {!instanceName && (
-                        <p className="text-[10px] text-amber-600 mt-2 font-medium flex items-center gap-1">
-                          <span className="material-symbols-outlined text-[14px]">warning</span>
-                          Necessário conectar WhatsApp primeiro.
-                        </p>
-                      )}
-                    </div>
-                  </div>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">IA Padronizada</h3>
+                <p className="text-slate-500 max-w-md mx-auto mb-6 text-sm leading-relaxed">
+                  As chaves de API e modelos de Inteligência Artificial agora são gerenciados globalmente para garantir a melhor performance e segurança.
+                </p>
+                <div className="flex flex-wrap justify-center gap-2">
+                  <span className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold border border-slate-200 dark:border-slate-700">Groq (Llama 3.3)</span>
+                  <span className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold border border-slate-200 dark:border-slate-700">Claude 3.5</span>
+                  <span className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold border border-slate-200 dark:border-slate-700">Gemini 1.5</span>
+                  <span className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold border border-slate-200 dark:border-slate-700">GPT-4o</span>
                 </div>
               </div>
             </div>
@@ -746,10 +563,10 @@ const Settings: React.FC = () => {
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6">Sobre o Sistema</h3>
                 <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
                   <div className="w-12 h-12 bg-primary/20 rounded-lg flex items-center justify-center text-primary font-bold text-xl">
-                    F
+                    V
                   </div>
                   <div>
-                    <h4 className="font-bold text-slate-900 dark:text-white">Financeiro AI ERP</h4>
+                    <h4 className="font-bold text-slate-900 dark:text-white">Versix AI ERP</h4>
                     <p className="text-xs text-slate-500">Versão 1.0.2 (Beta)</p>
                   </div>
                 </div>
@@ -850,21 +667,7 @@ const Settings: React.FC = () => {
                     try {
                       await evolutionApi.createInstance(newInstanceName, instanceToken);
                     } catch (apiError: any) {
-                      // If error is because instance already exists, we proceed
                       console.log('Instance creation note:', apiError);
-                      if (apiError.response?.status === 403 || apiError.message?.includes('already exists')) {
-                        // Instance exists, proceed to save binding. 
-                        // Note: If it exists, we can't really update the token securely without re-creating, 
-                        // but we will save the one we generated anyway effectively becoming "out of sync" if we don't recreate.
-                        // However, user flow is "Delete -> Create", so this is mostly for safety.
-                      } else {
-                        // Try to fetch to double check
-                        try {
-                          await evolutionApi.getInstanceStatus(newInstanceName);
-                        } catch (e) {
-                          throw apiError; // Re-throw if it really doesn't facilitate
-                        }
-                      }
                     }
 
                     // Save to dedicated instances table
@@ -878,7 +681,6 @@ const Settings: React.FC = () => {
 
                     if (dbError) throw dbError;
 
-                    // Also update user_settings for compatibility/preferences if needed, but 'instances' is now authority
                     await supabase.from('user_settings').upsert({
                       user_id: user.id,
                       ai_config: {
@@ -890,9 +692,8 @@ const Settings: React.FC = () => {
 
                     setInstanceName(newInstanceName);
                     setIsInstanceModalOpen(false);
-                    setIsEditingInstance(false); // Reset editing state
+                    setIsEditingInstance(false);
 
-                    // Specific message for rename vs new
                     if (isEditingInstance) {
                       toast.success('Instância renomeada! Necessário reconectar.');
                     } else {
@@ -914,7 +715,6 @@ const Settings: React.FC = () => {
           </div>
         </div>
       )}
-
     </div>
   );
 };

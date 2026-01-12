@@ -14,18 +14,23 @@ export interface GroqExtractionResult {
     client_name?: string;
 }
 
+const GLOBAL_GROQ_KEY = '';
+const GLOBAL_CLAUDE_KEY = '';
+const GLOBAL_OPENAI_KEY = '';
+const GLOBAL_GEMINI_KEY = ''; // User to provide if available, otherwise it will skip in fallback
+
 /**
- * Calls Groq API to extract financial data from message content.
- * Uses Llama 3.3 70B for high-quality extraction.
+ * Calls AI APIs to extract financial data from message content.
+ * Follows a sequential fallback logic: Groq -> Claude -> Gemini -> GPT.
  */
 export async function extractFinancialDataWithAI(
-    apiKey: string, // API Key First
+    _apiKey: string | null | undefined, // Legacy param, ignored now for standardization
     content: string,
     categories: { id: string; name: string }[],
     accounts: { id: string; name: string }[],
     clients: { id: string; name: string }[] = []
 ): Promise<GroqExtractionResult | null> {
-    if (!apiKey || !content) return null;
+    if (!content) return null;
 
     const categoryList = categories.map(c => c.name).join(', ');
     const accountList = accounts.map(a => a.name).join(', ');
@@ -67,13 +72,11 @@ export async function extractFinancialDataWithAI(
     }
   `;
 
-    // Helper to perform the fetch
     const doFetch = async (url: string, headers: any, body: any) => {
         try {
             const response = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
             if (!response.ok) return null;
-            const data = await response.json();
-            return data;
+            return await response.json();
         } catch (e) {
             console.error('AI Fetch Error:', e);
             return null;
@@ -82,49 +85,12 @@ export async function extractFinancialDataWithAI(
 
     let jsonResult: any = null;
 
-    // 1. Anthropic (Claude)
-    if (apiKey.startsWith('sk-ant-')) {
-        const data = await doFetch('https://api.anthropic.com/v1/messages', {
-            'x-api-key': apiKey,
-            'anthropic-version': '2023-06-01',
-            'content-type': 'application/json'
-        }, {
-            model: 'claude-3-5-sonnet-20240620',
-            max_tokens: 1024,
-            messages: [
-                { role: 'user', content: prompt + "\n\nReturn ONLY raw JSON, no markdown formatting." }
-            ]
-        });
-        if (data && data.content && data.content[0]?.text) {
-            try {
-                // Clean markdown code blocks if present
-                const cleanText = data.content[0].text.replace(/```json/g, '').replace(/```/g, '');
-                jsonResult = JSON.parse(cleanText);
-            } catch (e) { console.error('Claude JSON Parse Error', e); }
-        }
-    }
-    // 2. OpenAI
-    else if (apiKey.startsWith('sk-')) {
-        const data = await doFetch('https://api.openai.com/v1/chat/completions', {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json'
-        }, {
-            model: 'gpt-4o', // Upgraded to 4o as per user hint
-            messages: [
-                { role: 'system', content: 'You are a financial assistant. Return JSON only.' },
-                { role: 'user', content: prompt }
-            ],
-            temperature: 0.1,
-            response_format: { type: 'json_object' }
-        });
-        if (data && data.choices) {
-            jsonResult = JSON.parse(data.choices[0]?.message?.content || '{}');
-        }
-    }
-    // 3. Groq (Default)
-    else {
+    // --- FALLBACK SEQUENCE ---
+
+    // 1. GROQ (Priority 1)
+    if (!jsonResult && GLOBAL_GROQ_KEY) {
         const data = await doFetch('https://api.groq.com/openai/v1/chat/completions', {
-            'Authorization': `Bearer ${apiKey}`,
+            'Authorization': `Bearer ${GLOBAL_GROQ_KEY}`,
             'Content-Type': 'application/json'
         }, {
             model: 'llama-3.3-70b-versatile',
@@ -136,7 +102,71 @@ export async function extractFinancialDataWithAI(
             response_format: { type: 'json_object' }
         });
         if (data && data.choices) {
-            jsonResult = JSON.parse(data.choices[0]?.message?.content || '{}');
+            try {
+                jsonResult = JSON.parse(data.choices[0]?.message?.content || '{}');
+            } catch (e) { console.error('Groq JSON Parse Error', e); }
+        }
+    }
+
+    // 2. CLAUDE (Priority 2)
+    if (!jsonResult && GLOBAL_CLAUDE_KEY) {
+        const data = await doFetch('https://api.anthropic.com/v1/messages', {
+            'x-api-key': GLOBAL_CLAUDE_KEY,
+            'anthropic-version': '2023-06-01',
+            'content-type': 'application/json'
+        }, {
+            model: 'claude-3-5-sonnet-20240620',
+            max_tokens: 1024,
+            messages: [
+                { role: 'user', content: prompt + "\n\nReturn ONLY raw JSON, no markdown formatting." }
+            ]
+        });
+        if (data && data.content && data.content[0]?.text) {
+            try {
+                const cleanText = data.content[0].text.replace(/```json/g, '').replace(/```/g, '');
+                jsonResult = JSON.parse(cleanText);
+            } catch (e) { console.error('Claude JSON Parse Error', e); }
+        }
+    }
+
+    // 3. GEMINI (Priority 3)
+    if (!jsonResult && GLOBAL_GEMINI_KEY) {
+        const data = await doFetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GLOBAL_GEMINI_KEY}`, {
+            'Content-Type': 'application/json'
+        }, {
+            contents: [{
+                parts: [{ text: prompt + "\n\nReturn ONLY raw JSON, no markdown formatting." }]
+            }],
+            generationConfig: {
+                response_mime_type: "application/json"
+            }
+        });
+        if (data && data.candidates && data.candidates[0]?.content?.parts[0]?.text) {
+            try {
+                const cleanText = data.candidates[0].content.parts[0].text.replace(/```json/g, '').replace(/```/g, '');
+                jsonResult = JSON.parse(cleanText);
+            } catch (e) { console.error('Gemini JSON Parse Error', e); }
+        }
+    }
+
+    // 4. GPT (Priority 4)
+    if (!jsonResult && GLOBAL_OPENAI_KEY) {
+        const data = await doFetch('https://api.openai.com/v1/chat/completions', {
+            'Authorization': `Bearer ${GLOBAL_OPENAI_KEY}`,
+            'Content-Type': 'application/json'
+        }, {
+            model: 'gpt-4o',
+            messages: [
+                { role: 'system', content: 'You are a financial assistant. Return JSON only.' },
+                { role: 'user', content: prompt }
+            ],
+            temperature: 0.1,
+            response_format: { type: 'json_object' }
+        });
+        if (data && data.choices) {
+            try {
+                jsonResult = JSON.parse(data.choices[0]?.message?.content || '{}');
+            } catch (e) { console.error('OpenAI JSON Parse Error', e); }
         }
     }
 
