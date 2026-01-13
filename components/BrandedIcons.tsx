@@ -42,3 +42,18 @@ export const PdfIcon: React.FC<IconProps> = ({ className = "size-5" }) => (
         <path d="M10 8v8h2a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2zm-7 4h2a2 2 0 1 0 0-4H3v8m14-4h3m1-4h-4v8" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" />
     </svg>
 );
+
+export const ExcelIcon: React.FC<IconProps> = ({ className = "size-5" }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M4 7V17C4 18.1046 4.89543 19 6 19H18C19.1046 19 20 18.1046 20 17V7C20 5.89543 19.1046 5 18 5H6C4.89543 5 4 5.89543 4 7Z" stroke="currentColor" strokeWidth="1.5" />
+        <path d="M8 9L12 15M12 9L8 15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M16 5V19" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+);
+
+export const ImportIcon: React.FC<IconProps> = ({ className = "size-5" }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 3V16M12 16L16 12M12 16L8 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M20 10V17C20 19.2091 18.2091 21 16 21H8C5.79086 21 4 19.2091 4 17V10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+);

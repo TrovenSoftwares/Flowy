@@ -33,7 +33,12 @@ export const readExcelFile = (file: File): Promise<any[]> => {
         reader.onload = (e) => {
             try {
                 const data = e.target?.result;
-                const workbook = XLSX.read(data, { type: 'binary' });
+                const workbook = XLSX.read(data, {
+                    type: 'binary',
+                    cellDates: true,
+                    cellNF: false,
+                    cellText: false
+                });
                 const sheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[sheetName];
                 const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
@@ -45,6 +50,37 @@ export const readExcelFile = (file: File): Promise<any[]> => {
         reader.onerror = (err) => reject(err);
         reader.readAsBinaryString(file);
     });
+};
+
+/**
+ * Converte diferentes formatos de data do Excel para YYYY-MM-DD
+ */
+export const formatExcelDate = (value: any): string => {
+    if (!value) return new Date().toISOString().split('T')[0];
+
+    // Se já for um objeto Date (graças ao cellDates: true)
+    if (value instanceof Date) {
+        return value.toISOString().split('T')[0];
+    }
+
+    // Se for um número (Data ordinal do Excel, ex: 45992)
+    const num = Number(value);
+    if (!isNaN(num) && num > 30000) { // Datas razoáveis acima de 1982
+        const date = new Date(Math.round((num - 25569) * 86400 * 1000));
+        return date.toISOString().split('T')[0];
+    }
+
+    // Se for string no formato DD/MM/YYYY
+    const str = value.toString().trim();
+    if (str.includes('/')) {
+        const [day, month, year] = str.split('/');
+        if (day && month && year) {
+            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        }
+    }
+
+    // Caso padrão retorna a string original ou data atual
+    return str.length >= 10 ? str.substring(0, 10) : new Date().toISOString().split('T')[0];
 };
 
 export const downloadExampleTemplate = (type: 'contacts' | 'transactions' | 'sales') => {

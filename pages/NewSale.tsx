@@ -33,7 +33,8 @@ const NewSale: React.FC = () => {
     weight: '',
     shipping: '',
     seller: '',
-    code: ''
+    code: '',
+    is_ai: false
   });
 
   useEffect(() => {
@@ -74,7 +75,8 @@ const NewSale: React.FC = () => {
             weight: data.weight?.toString() || '',
             shipping: data.shipping?.toString() || '',
             seller: data.seller || '',
-            code: data.code || ''
+            code: data.code || '',
+            is_ai: data.is_ai || false
           });
         }
         setFetching(false);
@@ -94,13 +96,18 @@ const NewSale: React.FC = () => {
       date: formData.date,
       value: parseFloat(formData.value.replace(',', '.') || '0'),
       shipping: parseFloat(formData.shipping || '0') || 0,
-      seller: formData.seller || null
+      seller: isEdit ? (formData.seller || 'Manual') : 'Manual', // Force 'Manual' for new manual sales
+      is_ai: isEdit ? formData.is_ai : false // Persistent flag
     };
 
     // Only add optional fields if they have values
     if (formData.client_id) payload.client_id = formData.client_id;
     if (formData.weight) payload.weight = parseFloat(formData.weight) || null;
-    if (formData.code) payload.code = formData.code;
+    if (formData.code) {
+      payload.code = formData.code;
+    } else if (!isEdit) {
+      payload.code = `MAN-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
+    }
 
 
     let result;
@@ -322,20 +329,22 @@ const NewSale: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Seller Selection */}
-                <div className="flex flex-col gap-2">
-                  <label className="text-slate-900 dark:text-white text-sm font-medium">Vendedor Responsável <span className="text-slate-400 text-xs font-normal">(Cadastrados em Contatos)</span></label>
-                  <CustomSelect
-                    value={formData.seller}
-                    onChange={(val) => setFormData({ ...formData, seller: val })}
-                    placeholder="Selecione um vendedor"
-                    icon="person"
-                    options={sellers.map(s => ({ value: s.name, label: s.name }))}
-                  />
-                  {sellers.length === 0 && (
-                    <p className="text-xs text-amber-500">Nenhum vendedor cadastrado. <Link to="/sellers" className="underline">Cadastre aqui</Link>.</p>
-                  )}
-                </div>
+                {/* Seller Selection - Hidden for new manual sales as requested */}
+                {isEdit && (
+                  <div className="flex flex-col gap-2">
+                    <label className="text-slate-900 dark:text-white text-sm font-medium">Vendedor Responsável <span className="text-slate-400 text-xs font-normal">(Cadastrados em Contatos)</span></label>
+                    <CustomSelect
+                      value={formData.seller}
+                      onChange={(val) => setFormData({ ...formData, seller: val })}
+                      placeholder="Selecione um vendedor"
+                      icon="person"
+                      options={sellers.map(s => ({ value: s.name, label: s.name }))}
+                    />
+                    {sellers.length === 0 && (
+                      <p className="text-xs text-amber-500">Nenhum vendedor cadastrado. <Link to="/sellers" className="underline">Cadastre aqui</Link>.</p>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Form Footer Actions */}

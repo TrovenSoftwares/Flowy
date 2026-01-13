@@ -8,6 +8,7 @@ import CustomerDetailsDrawer from '../components/CustomerDetailsDrawer';
 import CustomSelect from '../components/CustomSelect';
 import { toast } from 'react-hot-toast';
 import { formatPhone, formatCpfCnpj } from '../utils/utils';
+import { ExcelIcon, ImportIcon } from '../components/BrandedIcons';
 import { exportToExcel, readExcelFile, downloadExampleTemplate } from '../utils/excelUtils';
 
 const Contacts: React.FC = () => {
@@ -234,18 +235,18 @@ const Contacts: React.FC = () => {
           <div className="flex gap-2">
             <button
               onClick={() => setImportModalOpen(true)}
-              className="flex items-center justify-center size-10 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
+              className="flex items-center justify-center size-10 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
               title="Importar Excel"
             >
-              <span className="material-symbols-outlined text-[24px]">upload_file</span>
+              <ImportIcon className="size-6 text-slate-600 dark:text-slate-300" />
             </button>
             <button
               onClick={handleExport}
               disabled={filteredContacts.length === 0}
-              className="flex items-center justify-center size-10 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
+              className="flex items-center justify-center size-10 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm disabled:opacity-30"
               title="Exportar Excel"
             >
-              <span className="material-symbols-outlined text-[24px]">table_view</span>
+              <ExcelIcon className="size-6 text-emerald-600 dark:text-emerald-500" />
             </button>
             <button
               onClick={fetchContacts}
@@ -290,7 +291,7 @@ const Contacts: React.FC = () => {
                 accept=".xlsx"
                 onChange={handleImport}
                 disabled={importing}
-                className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer"
+                className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 file:cursor-pointer cursor-pointer"
               />
               {importing && (
                 <div className="flex items-center gap-2 text-sm text-primary font-bold animate-pulse">

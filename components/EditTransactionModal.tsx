@@ -26,7 +26,8 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({ isOpen, onC
         account_id: '',
         contact_id: '',
         status: '',
-        type: 'expense' as 'income' | 'expense'
+        type: 'expense' as 'income' | 'expense',
+        is_ai: false
     });
 
     useEffect(() => {
@@ -65,7 +66,8 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({ isOpen, onC
                 account_id: transaction.account_id || '',
                 contact_id: transaction.contact_id || '',
                 status: transaction.status,
-                type: transaction.type
+                type: transaction.type,
+                is_ai: transaction.is_ai || false
             });
         }
     }, [transaction]);
@@ -93,7 +95,8 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({ isOpen, onC
                     account_id: formData.account_id,
                     contact_id: formData.contact_id || null, // Handle empty string
                     status: formData.status,
-                    type: formData.type
+                    type: formData.type,
+                    is_ai: formData.is_ai
                 })
                 .eq('id', transaction.id);
 

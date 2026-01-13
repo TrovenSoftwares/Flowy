@@ -10,7 +10,7 @@ import { toast } from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { exportToExcel, readExcelFile, downloadExampleTemplate } from '../utils/excelUtils';
-import { PdfIcon } from '../components/BrandedIcons';
+import { PdfIcon, ExcelIcon, ImportIcon } from '../components/BrandedIcons';
 
 const Sales: React.FC = () => {
   const navigate = useNavigate();
@@ -158,29 +158,96 @@ const Sales: React.FC = () => {
       const { data: { user } } = await supabase.auth.getUser();
 
       // Fetch all contacts to match by name
-      const { data: contacts } = await supabase.from('contacts').select('id, name');
-      const contactMap = new Map((contacts || []).map(c => [c.name.toLowerCase(), c.id]));
+      const { data: contactsData } = await supabase.from('contacts').select('id, name, balance');
+      const balanceMap = new Map((contactsData || []).map(c => [c.id, c.balance || 0]));
+
+      const findClientId = (name: string) => {
+        if (!name) return null;
+        const search = name.toLowerCase().trim();
+
+        // 1. Exact match
+        const exact = contactsData?.find(c => c.name.toLowerCase().trim() === search);
+        if (exact) return exact.id;
+
+        // 2. Starts with (ex: "Patricia" matches "Patricia Lopes")
+        const startsWith = contactsData?.filter(c => c.name.toLowerCase().trim().startsWith(search));
+        if (startsWith?.length === 1) return startsWith[0].id;
+
+        // 3. Includes
+        const includes = contactsData?.filter(c => c.name.toLowerCase().includes(search));
+        if (includes?.length === 1) return includes[0].id;
+
+        return null;
+      };
 
       const newSales = data.map((row: any) => {
-        const clientName = row['Cliente'] || row['cliente'] || '';
-        const client_id = contactMap.get(clientName.toLowerCase()) || null;
+        const clientName = (row['Cliente'] || row['cliente'] || '').toString().trim();
+        const client_id = findClientId(clientName);
+
+        // Parse numeric values safely (Handling Brazilian format: 1.234,56)
+        const parseValue = (val: any) => {
+          if (typeof val === 'number') return val;
+          if (!val) return 0;
+          const clean = val.toString().replace('R$', '').replace(/\./g, '').replace(',', '.').trim();
+          const parsed = parseFloat(clean);
+          return isNaN(parsed) ? 0 : parsed;
+        };
+
+        const value = parseValue(row['Valor_Total'] || row['Valor Total'] || row['valor_total'] || row['Valor'] || 0);
+        const weight = parseValue(row['Peso_Gramas'] || row['Peso (g)'] || row['peso_gramas'] || row['Peso'] || 0);
+        const shipping = parseValue(row['Frete'] || row['Frete (R$)'] || row['frete'] || 0);
+
+        const isAiSale = (row['Vendedor'] || row['vendedor'] || '').toLowerCase().includes('ia');
+
+        // Parse Date (Handling DD/MM/YYYY to YYYY-MM-DD)
+        const rawDate = row['Data'] || row['data'];
+        let formattedDate = new Date().toISOString().split('T')[0];
+        if (rawDate) {
+          const dateStr = rawDate.toString().trim();
+          if (dateStr.includes('/')) {
+            const [day, month, year] = dateStr.split('/');
+            if (day && month && year) {
+              formattedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+            }
+          } else {
+            formattedDate = dateStr;
+          }
+        }
 
         return {
-          date: row['Data'] || row['data'] || new Date().toISOString().split('T')[0],
-          value: parseFloat(row['Valor_Total'] || row['Valor Total'] || row['valor_total'] || row['Valor'] || 0),
-          weight: parseFloat(row['Peso_Gramas'] || row['Peso (g)'] || row['peso_gramas'] || row['Peso'] || 0),
-          shipping: parseFloat(row['Frete'] || row['Frete (R$)'] || row['frete'] || 0),
-          seller: row['Vendedor'] || row['vendedor'] || row['Nome Vendedor'] || 'Importado',
+          date: formattedDate,
+          value,
+          weight,
+          shipping,
+          seller: row['Vendedor'] || row['vendedor'] || (isAiSale ? 'WhatsApp IA' : 'Manual'),
+          is_ai: isAiSale,
           user_id: user?.id,
           client_id,
-          account_id: null
+          code: row['Codigo'] || row['Código'] || row['codigo'] || `IMP-${Math.random().toString(36).substring(2, 9).toUpperCase()}`
+          // account_id removed as it was null and cause FK errors
         };
       });
 
       const { error } = await supabase.from('sales').insert(newSales);
       if (error) throw error;
 
-      toast.success(`${newSales.length} vendas importadas!`);
+      // Update contact balances for the imported sales
+      for (const sale of newSales) {
+        if (sale.client_id) {
+          const currentBalance = balanceMap.get(sale.client_id) || 0;
+          const totalSale = sale.value + sale.shipping;
+          const newBalance = currentBalance + totalSale;
+
+          await supabase.from('contacts')
+            .update({ balance: newBalance })
+            .eq('id', sale.client_id);
+
+          // Update local map to handle multiple sales for same client in same import
+          balanceMap.set(sale.client_id, newBalance);
+        }
+      }
+
+      toast.success(`${newSales.length} vendas importadas com sucesso!`);
       fetchSales();
       setImportModalOpen(false);
     } catch (err: any) {
@@ -309,18 +376,18 @@ const Sales: React.FC = () => {
           <div className="flex gap-2">
             <button
               onClick={() => setImportModalOpen(true)}
-              className="flex items-center justify-center size-10 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
+              className="flex items-center justify-center size-10 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
               title="Importar Excel"
             >
-              <span className="material-symbols-outlined text-[24px]">upload_file</span>
+              <ImportIcon className="size-6 text-slate-600 dark:text-slate-300" />
             </button>
             <button
               onClick={handleExportExcel}
               disabled={filteredSales.length === 0}
-              className="flex items-center justify-center size-10 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
+              className="flex items-center justify-center size-10 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm disabled:opacity-30"
               title="Exportar Excel"
             >
-              <span className="material-symbols-outlined text-[24px]">table_view</span>
+              <ExcelIcon className="size-6 text-emerald-600 dark:text-emerald-500" />
             </button>
             <button
               onClick={exportToPDF}
@@ -373,7 +440,7 @@ const Sales: React.FC = () => {
                 accept=".xlsx"
                 onChange={handleImportExcel}
                 disabled={importing}
-                className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer"
+                className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 file:cursor-pointer cursor-pointer"
               />
               {importing && (
                 <div className="flex items-center gap-2 text-sm text-primary font-bold animate-pulse">
@@ -597,9 +664,17 @@ const SaleRow = ({ sale, onEdit, onDelete }: any) => {
         ) : <span className="text-emerald-500">Grátis</span>}
       </td>
       <td className="px-4 py-4">
-        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-          {sale.seller || 'Manual'}
-        </span>
+        <div className="flex flex-col gap-1">
+          <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 uppercase tracking-wider w-fit">
+            {sale.seller || 'Manual'}
+          </span>
+          {sale.is_ai && (
+            <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
+              <span className="material-symbols-outlined text-[12px]">smart_toy</span>
+              PROCESSADO POR IA
+            </span>
+          )}
+        </div>
       </td>
       <td className="px-4 py-4 text-right">
         <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">

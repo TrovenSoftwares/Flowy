@@ -131,10 +131,10 @@ const NewTransaction: React.FC = () => {
           user_id: user?.id
         };
 
-        const { error: error1 } = await supabase.from('transactions').insert(expensePayload);
+        const { error: error1 } = await supabase.from('transactions').insert({ ...expensePayload, is_ai: false });
         if (error1) throw error1;
 
-        const { error: error2 } = await supabase.from('transactions').insert(incomePayload);
+        const { error: error2 } = await supabase.from('transactions').insert({ ...incomePayload, is_ai: false });
         if (error2) throw error2;
 
         toast.success(`Transferência de R$ ${cleanValue} realizada com sucesso!`);
@@ -148,7 +148,8 @@ const NewTransaction: React.FC = () => {
           category_id: formData.category_id,
           account_id: formData.account_id,
           status: formData.status,
-          user_id: user?.id
+          user_id: user?.id,
+          is_ai: false
         };
 
         if (formData.contact_id) {

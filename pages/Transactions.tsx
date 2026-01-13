@@ -12,7 +12,7 @@ import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { exportToExcel, readExcelFile, downloadExampleTemplate } from '../utils/excelUtils';
-import { PdfIcon } from '../components/BrandedIcons';
+import { PdfIcon, ExcelIcon, ImportIcon } from '../components/BrandedIcons';
 
 const Transactions: React.FC = () => {
   const navigate = useNavigate();
@@ -25,6 +25,7 @@ const Transactions: React.FC = () => {
   });
   const [categories, setCategories] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
+  const [contacts, setContacts] = useState<any[]>([]);
   const [filters, setFilters] = useState({
     search: '',
     period: 'Todo o período',
@@ -72,6 +73,10 @@ const Transactions: React.FC = () => {
       // Fetch accounts for the dropdown
       const { data: accs } = await supabase.from('accounts').select('id, name').order('name');
       setAccounts(accs || []);
+
+      // Fetch contacts for mapping on import
+      const { data: conts } = await supabase.from('contacts').select('id, name').order('name');
+      setContacts(conts || []);
 
       const income = data?.filter(t => t.type === 'income').reduce((acc, t) => acc + Number(t.value), 0) || 0;
       const expense = data?.filter(t => t.type === 'expense').reduce((acc, t) => acc + Number(t.value), 0) || 0;
@@ -301,37 +306,88 @@ const Transactions: React.FC = () => {
       const data = await readExcelFile(file);
       const { data: { user } } = await supabase.auth.getUser();
 
-      const newTransactions = data.map((row: any) => {
-        const rowType = (row['Tipo'] || row['tipo'] || 'expense').toLowerCase();
-        let type: 'income' | 'expense' | 'transfer' = 'expense';
-        if (rowType.includes('receita') || rowType.includes('entrada') || rowType === 'income') type = 'income';
-        if (rowType.includes('transfer')) type = 'transfer';
+      const findId = (list: any[], value: any) => {
+        if (!value || !list || list.length === 0) return null;
+        const search = value.toString().toLowerCase().trim();
 
-        const rowPaid = (row['Pago'] || row['pago'] || row['Status'] || row['status'] || 'Sim').toLowerCase();
+        const exact = list.find(i => i.name.toLowerCase().trim() === search);
+        if (exact) return exact.id;
+
+        const startsWith = list.filter(i => i.name.toLowerCase().trim().startsWith(search));
+        if (startsWith.length === 1) return startsWith[0].id;
+
+        const includes = list.filter(i => i.name.toLowerCase().includes(search));
+        if (includes.length === 1) return includes[0].id;
+
+        return null;
+      };
+
+      const newTransactions = data.map((row: any) => {
+        // Robust column getter
+        const getVal = (names: string[]) => {
+          for (const name of names) {
+            if (row[name] !== undefined && row[name] !== null) return row[name];
+          }
+          return null;
+        };
+
+        const rawType = (getVal(['Tipo', 'tipo', 'Type', 'type']) || 'expense').toString().toLowerCase();
+        let type: 'income' | 'expense' | 'transfer' = 'expense';
+        if (rawType.includes('receita') || rawType.includes('entrada') || rawType === 'income') type = 'income';
+        if (rawType.includes('transfer')) type = 'transfer';
+
+        const rowPaid = (getVal(['Pago', 'pago', 'Status', 'status']) || 'Sim').toString().toLowerCase();
         const status = (rowPaid === 'sim' || rowPaid === 'confirmed' || rowPaid === 'pago') ? 'confirmed' : 'pending';
 
+        const parseValue = (val: any) => {
+          if (typeof val === 'number') return val;
+          if (!val) return 0;
+          const clean = val.toString().replace('R$', '').replace(/\./g, '').replace(',', '.').trim();
+          const parsed = parseFloat(clean);
+          return isNaN(parsed) ? 0 : parsed;
+        };
+
+        const rawDate = getVal(['Data', 'data', 'Date', 'date']);
+        let formattedDate = new Date().toISOString().split('T')[0];
+        if (rawDate) {
+          const dateStr = rawDate.toString().trim();
+          if (dateStr.includes('/')) {
+            const [day, month, year] = dateStr.split('/');
+            if (day && month && year) formattedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+          } else {
+            formattedDate = dateStr;
+          }
+        }
+
+        const description = getVal(['Descricao', 'Descrição', 'descrição', 'descricao', 'Description', 'description']) || 'Importado via Excel';
+
         return {
-          description: row['Descricao'] || row['Descrição'] || row['descrição'] || 'Importado via Excel',
-          value: parseFloat(row['Valor'] || row['valor'] || 0),
+          description,
+          value: parseValue(getVal(['Valor', 'valor', 'Value', 'value']) || 0),
           type,
-          date: row['Data'] || row['data'] || new Date().toISOString().split('T')[0],
+          date: formattedDate,
           status,
           user_id: user?.id,
-          // IDs are harder to import via excel without lookup, usually best to leave null or default
-          account_id: accounts[0]?.id || '',
-          category_id: categories[0]?.id || ''
+          account_id: findId(accounts, getVal(['Conta', 'conta', 'Account', 'account'])) || accounts[0]?.id || null,
+          category_id: findId(categories, getVal(['Categoria', 'categoria', 'Category', 'category'])) || categories[0]?.id || null,
+          contact_id: findId(contacts, getVal(['Cliente', 'cliente', 'Client', 'client', 'Contato', 'contato'])),
+          is_ai: description.toLowerCase().includes('ia')
         };
       });
 
+      console.log('Inserting transactions:', newTransactions);
       const { error } = await supabase.from('transactions').insert(newTransactions);
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase Error:', error);
+        throw new Error(error.message);
+      }
 
       toast.success(`${newTransactions.length} transações importadas!`);
       fetchTransactions();
       setImportModalOpen(false);
     } catch (err: any) {
-      console.error(err);
-      toast.error('Erro na importação: Verifique as colunas do Excel.');
+      console.error('Import process error:', err);
+      toast.error(`Erro na importação: ${err.message || 'Verifique as colunas do Excel.'}`);
     } finally {
       setImporting(false);
       e.target.value = '';
@@ -347,18 +403,18 @@ const Transactions: React.FC = () => {
           <div className="flex gap-2">
             <button
               onClick={() => setImportModalOpen(true)}
-              className="flex items-center justify-center size-10 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
+              className="flex items-center justify-center size-10 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
               title="Importar Excel"
             >
-              <span className="material-symbols-outlined text-[24px]">upload_file</span>
+              <ImportIcon className="size-6 text-slate-600 dark:text-slate-300" />
             </button>
             <button
               onClick={handleExportExcel}
               disabled={filteredTransactions.length === 0}
-              className="flex items-center justify-center size-10 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
+              className="flex items-center justify-center size-10 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm disabled:opacity-30"
               title="Exportar Excel"
             >
-              <span className="material-symbols-outlined text-[24px]">table_view</span>
+              <ExcelIcon className="size-6 text-emerald-600 dark:text-emerald-500" />
             </button>
             <button
               onClick={exportToPDF}
@@ -411,7 +467,7 @@ const Transactions: React.FC = () => {
                 accept=".xlsx"
                 onChange={handleImportExcel}
                 disabled={importing}
-                className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer"
+                className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 file:cursor-pointer cursor-pointer"
               />
               {importing && (
                 <div className="flex items-center gap-2 text-sm text-primary font-bold animate-pulse">
@@ -580,7 +636,15 @@ const TransactionRow = ({ tx, onEdit, onDelete }: any) => {
           </div>
           <div className="flex flex-col">
             <span className="text-sm font-bold text-slate-900 dark:text-white line-clamp-1">{tx.description}</span>
-            <span className="text-xs text-slate-400">{tx.accounts?.name || '---'}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-400">{tx.accounts?.name || '---'}</span>
+              {tx.is_ai && (
+                <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
+                  <span className="material-symbols-outlined text-[10px]">smart_toy</span>
+                  IA
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </td>
