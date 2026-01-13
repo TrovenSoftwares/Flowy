@@ -336,9 +336,9 @@ const Wallet: React.FC = () => {
       </div>
 
       <div className="max-w-7xl mx-auto space-y-8 p-8 w-full">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
           {/* Left Column: Accounts (Wallet) */}
-          <div className="lg:col-span-5 space-y-6">
+          <div className="xl:col-span-5 space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <span className="material-symbols-outlined text-primary filled">account_balance_wallet</span>
@@ -389,7 +389,7 @@ const Wallet: React.FC = () => {
           </div>
 
           {/* Right Column: Categories Management */}
-          <div className="lg:col-span-7 space-y-6">
+          <div className="xl:col-span-7 space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
                 <span className="material-symbols-outlined text-primary">category</span>
