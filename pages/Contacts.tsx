@@ -4,9 +4,10 @@ import { supabase } from '../lib/supabase';
 import PageHeader from '../components/PageHeader';
 import ConfirmModal from '../components/ConfirmModal';
 import FilterDrawer from '../components/FilterDrawer';
+import CustomerDetailsDrawer from '../components/CustomerDetailsDrawer';
 import CustomSelect from '../components/CustomSelect';
 import { toast } from 'react-hot-toast';
-import { formatPhone } from '../utils/utils';
+import { formatPhone, formatCpfCnpj } from '../utils/utils';
 
 const Contacts: React.FC = () => {
   const navigate = useNavigate();
@@ -33,6 +34,10 @@ const Contacts: React.FC = () => {
     totalReceived: 0,
     totalReceivable: 0
   });
+
+  // Details State
+  const [selectedContact, setSelectedContact] = useState<any | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -284,6 +289,7 @@ const Contacts: React.FC = () => {
                   contact={contact}
                   onEdit={() => navigate(`/contacts/edit/${contact.id}`)}
                   onDelete={() => setDeleteModal({ isOpen: true, id: contact.id })}
+                  onView={() => { setSelectedContact(contact); setIsDetailsOpen(true); }}
                 />
               ))
             )}
@@ -366,6 +372,12 @@ const Contacts: React.FC = () => {
         confirmLabel="Excluir"
         type="danger"
       />
+
+      <CustomerDetailsDrawer
+        isOpen={isDetailsOpen}
+        onClose={() => setIsDetailsOpen(false)}
+        contact={selectedContact}
+      />
     </div>
   );
 };
@@ -385,7 +397,7 @@ const StatCard = ({ label, value, trend, icon, iconColor, valueColor, trendColor
 );
 
 // Contact Row Component - Premium style matching Sales/Transactions
-const ContactRow = ({ contact, onEdit, onDelete }: any) => {
+const ContactRow = ({ contact, onEdit, onDelete, onView }: any) => {
   return (
     <tr className="group hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors">
       <td className="py-4 pl-6 pr-3 text-center">
@@ -402,7 +414,7 @@ const ContactRow = ({ contact, onEdit, onDelete }: any) => {
           )}
           <div className="flex flex-col">
             <span className="text-sm font-bold text-slate-900 dark:text-white line-clamp-1">{contact.name}</span>
-            <span className="text-xs text-slate-400">{contact.id_number || '---'}</span>
+            <span className="text-xs text-slate-400">{formatCpfCnpj(contact.id_number)}</span>
           </div>
         </div>
       </td>
@@ -428,10 +440,13 @@ const ContactRow = ({ contact, onEdit, onDelete }: any) => {
       </td>
       <td className="px-4 py-4 text-right">
         <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button onClick={onEdit} className="p-1.5 text-slate-400 hover:text-primary transition-colors">
+          <button onClick={onView} className="p-1.5 text-slate-400 hover:text-blue-500 transition-colors" title="Ver Detalhes">
+            <span className="material-symbols-outlined text-lg">visibility</span>
+          </button>
+          <button onClick={onEdit} className="p-1.5 text-slate-400 hover:text-primary transition-colors" title="Editar">
             <span className="material-symbols-outlined text-lg">edit</span>
           </button>
-          <button onClick={onDelete} className="p-1.5 text-slate-400 hover:text-rose-500 transition-colors">
+          <button onClick={onDelete} className="p-1.5 text-slate-400 hover:text-rose-500 transition-colors" title="Excluir">
             <span className="material-symbols-outlined text-lg">delete</span>
           </button>
         </div>

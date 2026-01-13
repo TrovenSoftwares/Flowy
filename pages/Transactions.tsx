@@ -7,6 +7,10 @@ import EditTransactionModal from '../components/EditTransactionModal';
 import { supabase } from '../lib/supabase';
 import { formatDate } from '../utils/utils';
 import { toast } from 'react-hot-toast';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 
 const Transactions: React.FC = () => {
   const navigate = useNavigate();
@@ -18,6 +22,7 @@ const Transactions: React.FC = () => {
     expense: 0
   });
   const [categories, setCategories] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<any[]>([]);
   const [filters, setFilters] = useState({
     search: '',
     period: 'Todo o período',
@@ -57,6 +62,10 @@ const Transactions: React.FC = () => {
       // Fetch categories for the dropdown
       const { data: cats } = await supabase.from('categories').select('id, name').order('name');
       setCategories(cats || []);
+
+      // Fetch accounts for the dropdown
+      const { data: accs } = await supabase.from('accounts').select('id, name').order('name');
+      setAccounts(accs || []);
 
       const income = data?.filter(t => t.type === 'income').reduce((acc, t) => acc + Number(t.value), 0) || 0;
       const expense = data?.filter(t => t.type === 'expense').reduce((acc, t) => acc + Number(t.value), 0) || 0;
@@ -142,6 +151,136 @@ const Transactions: React.FC = () => {
     }
   };
 
+  const exportToPDF = () => {
+    if (filteredTransactions.length === 0) return;
+
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 15;
+
+    // Helper: Format Money
+    const fmt = (val: number) => "R$\u00A0" + val.toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+
+    // -- HEADER --
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(20);
+    doc.setTextColor(30, 41, 59);
+    doc.text('Extrato de Transações', margin, 20);
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text('Sistema: Versix ERP', margin, 26);
+
+    // Filter Info (Top Right)
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139);
+    const now = new Date();
+    doc.text(`Gerado em: ${now.toLocaleString('pt-BR')}`, pageWidth - margin, 20, { align: 'right' });
+    doc.text(`Filtros: Periodo: ${filters.period} | Conta: ${filters.account}`, pageWidth - margin, 25, { align: 'right' });
+
+    // -- STATS SUMMARY BOXES --
+    const income = filteredTransactions.filter(t => t.type === 'income').reduce((acc, t) => acc + Number(t.value), 0);
+    const expense = filteredTransactions.filter(t => t.type === 'expense').reduce((acc, t) => acc + Number(t.value), 0);
+    const balance = income - expense;
+
+    const boxWidth = (pageWidth - (margin * 2) - 10) / 3;
+    const boxHeight = 20;
+    const boxY = 35;
+
+    const drawSummaryBox = (x: number, title: string, value: string, color: [number, number, number] = [30, 41, 59]) => {
+      doc.setDrawColor(229, 231, 235);
+      doc.setLineWidth(0.1);
+      doc.roundedRect(x, boxY, boxWidth, boxHeight, 2, 2, 'D');
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100, 116, 139);
+      doc.text(title, x + 5, boxY + 7);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(color[0], color[1], color[2]);
+      doc.text(value, x + 5, boxY + 15);
+    };
+
+    drawSummaryBox(margin, 'Entradas', fmt(income), [5, 150, 105]);
+    drawSummaryBox(margin + boxWidth + 5, 'Saídas', fmt(expense), [220, 38, 38]);
+    drawSummaryBox(margin + (boxWidth + 5) * 2, 'Saldo Líquido', fmt(balance), balance > 0 ? [220, 38, 38] : [5, 150, 105]); // Red if > 0, Green if <= 0
+
+    // -- TABLE --
+    // Sort transactions oldest to newest for the report
+    const sortedForReport = [...filteredTransactions].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    let runningBalance = 0;
+    const tableData = sortedForReport.map(t => {
+      const value = Number(t.value);
+      if (t.type === 'income') {
+        runningBalance += value;
+      } else {
+        runningBalance -= value;
+      }
+
+      return [
+        formatDate(t.date),
+        t.description || '---',
+        t.categories?.name || '---',
+        t.accounts?.name || '---',
+        t.type === 'income' ? 'Entrada' : 'Saída',
+        fmt(value),
+        fmt(runningBalance)
+      ];
+    });
+
+    autoTable(doc, {
+      startY: 62,
+      head: [['DATA', 'DESCRIÇÃO', 'CATEGORIA', 'CONTA', 'TIPO', 'VALOR', 'SALDO']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [243, 244, 246], textColor: [30, 41, 59], fontStyle: 'bold', fontSize: 8 },
+      styles: { fontSize: 8, cellPadding: 3, textColor: [30, 41, 59], lineColor: [229, 231, 235] },
+      columnStyles: {
+        5: { halign: 'right', fontStyle: 'bold' },
+        6: { halign: 'right', fontStyle: 'bold' }
+      },
+      didParseCell: (data) => {
+        const rowIndex = data.row.index;
+        const tx = sortedForReport[rowIndex];
+
+        if (data.section === 'body') {
+          // Color for Value column (Index 5)
+          if (data.column.index === 5) {
+            data.cell.styles.textColor = tx.type === 'income' ? [5, 150, 105] : [220, 38, 38];
+          }
+
+          // Color for Running Balance column (Index 6)
+          if (data.column.index === 6) {
+            let rowBalance = 0;
+            for (let i = 0; i <= rowIndex; i++) {
+              const item = sortedForReport[i];
+              const val = Number(item.value);
+              if (item.type === 'income') rowBalance += val;
+              else rowBalance -= val;
+            }
+            if (rowBalance > 0) data.cell.styles.textColor = [220, 38, 38]; // Red if > 0
+            else if (rowBalance < 0) data.cell.styles.textColor = [5, 150, 105]; // Green if < 0
+          }
+        }
+      }
+    });
+
+    // -- FOOTER --
+    const pageCount = doc.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(156, 163, 175);
+      doc.text(`Extrato Versix ERP • Página ${i} de ${pageCount} • Gerado em ${now.toLocaleDateString('pt-BR')}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+    }
+
+    doc.save(`Extrato_Transacoes_${format(now, 'dd_MM_yyyy')}.pdf`);
+    toast.success('Extrato PDF gerado com sucesso!');
+  };
+
   return (
     <div className="flex-1 flex flex-col gap-6 animate-in fade-in duration-500">
       <PageHeader
@@ -149,6 +288,14 @@ const Transactions: React.FC = () => {
         description="Gerencie receitas e despesas de forma centralizada."
         actions={
           <div className="flex gap-3">
+            <button
+              onClick={exportToPDF}
+              disabled={filteredTransactions.length === 0}
+              className="flex items-center justify-center size-10 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-30 shadow-sm"
+              title="Exportar Extrato PDF"
+            >
+              <span className="material-symbols-outlined text-[24px]">picture_as_pdf</span>
+            </button>
             <button
               onClick={fetchTransactions}
               className="flex items-center justify-center gap-2 rounded-lg h-10 px-4 bg-white dark:bg-slate-850 border border-gray-200 dark:border-slate-700 text-sm font-bold hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
@@ -208,6 +355,16 @@ const Transactions: React.FC = () => {
               options={[
                 { value: 'Todas', label: 'Todas Categorias' },
                 ...categories.map(c => ({ value: c.name, label: c.name }))
+              ]}
+            />
+            <CustomSelect
+              className="w-full sm:w-44"
+              icon="account_balance"
+              value={filters.account}
+              onChange={(val) => setFilters({ ...filters, account: val })}
+              options={[
+                { value: 'Todas', label: 'Todas as Contas' },
+                ...accounts.map(a => ({ value: a.name, label: a.name }))
               ]}
             />
           </div>

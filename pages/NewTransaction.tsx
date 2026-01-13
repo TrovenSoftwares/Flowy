@@ -262,12 +262,11 @@ const NewTransaction: React.FC = () => {
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Data {transactionMode === 'transfer' ? 'da Transferência' : 'de Pagamento'}</label>
               <div className="relative">
                 <input
-                  className="block w-full pl-4 pr-10 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-base text-slate-900 dark:text-white focus:ring-primary focus:border-primary outline-none"
+                  className="block w-full px-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-base text-slate-900 dark:text-white focus:ring-primary focus:border-primary outline-none"
                   type="date"
                   value={formData.date}
                   onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                 />
-                <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">calendar_today</span>
               </div>
             </div>
           </div>

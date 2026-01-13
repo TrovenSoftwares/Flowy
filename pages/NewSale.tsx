@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import InputMask from '../components/InputMask';
-import { MASKS } from '../utils/utils';
+import { MASKS, formatCpfCnpj } from '../utils/utils';
 import { toast } from 'react-hot-toast';
 import PageHeader from '../components/PageHeader';
 import CustomSelect from '../components/CustomSelect';
@@ -234,7 +234,7 @@ const NewSale: React.FC = () => {
                         onClick={() => selectContact(contact)}
                       >
                         <p className="font-bold text-slate-900 dark:text-white">{contact.name}</p>
-                        <p className="text-xs text-slate-500">{contact.phone || contact.email || contact.id_number}</p>
+                        <p className="text-xs text-slate-500">{contact.phone || contact.email || formatCpfCnpj(contact.id_number)}</p>
                       </div>
                     ))}
                   </div>
