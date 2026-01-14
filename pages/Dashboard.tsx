@@ -218,44 +218,43 @@ const Dashboard: React.FC = () => {
   return (
     <div className="flex-1 flex flex-col">
       {/* Header Area */}
-      <div className="w-full px-8 py-6 border-b border-[#e7edf3] dark:border-slate-800">
-        <div className="max-w-[1400px] mx-auto">
-          <PageHeader
-            title="Dashboard"
-            description="Bem-vindo de volta! Aqui está o resumo financeiro de hoje."
-            actions={
-              <div className="flex items-center w-full sm:w-auto bg-white dark:bg-slate-850 rounded-lg p-1 border border-slate-200 dark:border-slate-700 shadow-sm overflow-x-auto no-scrollbar">
-                <button
-                  onClick={() => setFilter('monthly')}
-                  className={`flex-1 sm:flex-none px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-semibold rounded transition-colors whitespace-nowrap ${filter === 'monthly' ? 'bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
-                >
-                  Mensal
-                </button>
-                <button
-                  onClick={() => setFilter('quarterly')}
-                  className={`flex-1 sm:flex-none px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-semibold rounded transition-colors whitespace-nowrap ${filter === 'quarterly' ? 'bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
-                >
-                  Trimestral
-                </button>
-                <button
-                  onClick={() => setFilter('annual')}
-                  className={`flex-1 sm:flex-none px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-semibold rounded transition-colors whitespace-nowrap ${filter === 'annual' ? 'bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
-                >
-                  Anual
-                </button>
-              </div>
-            }
-          />
-        </div>
+      {/* Header Area */}
+      <div className="w-full py-4 border-b border-[#e7edf3] dark:border-slate-800">
+        <PageHeader
+          title="Dashboard"
+          description="Bem-vindo de volta! Aqui está o resumo financeiro de hoje."
+          actions={
+            <div className="flex items-center w-full sm:w-auto bg-white dark:bg-slate-850 rounded-lg p-1 border border-slate-200 dark:border-slate-700 shadow-sm overflow-x-auto no-scrollbar">
+              <button
+                onClick={() => setFilter('monthly')}
+                className={`flex-1 sm:flex-none px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-semibold rounded transition-colors whitespace-nowrap ${filter === 'monthly' ? 'bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
+              >
+                Mensal
+              </button>
+              <button
+                onClick={() => setFilter('quarterly')}
+                className={`flex-1 sm:flex-none px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-semibold rounded transition-colors whitespace-nowrap ${filter === 'quarterly' ? 'bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
+              >
+                Trimestral
+              </button>
+              <button
+                onClick={() => setFilter('annual')}
+                className={`flex-1 sm:flex-none px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-semibold rounded transition-colors whitespace-nowrap ${filter === 'annual' ? 'bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'}`}
+              >
+                Anual
+              </button>
+            </div>
+          }
+        />
       </div>
 
-      <div className="max-w-[1400px] mx-auto space-y-6 p-8">
+      <div className="space-y-6 pt-6">
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
           <StatCard
             label="Receita Período"
-            value={loading ? '...' : `R$\u00A0${stats.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+            value={loading ? '...' : `R$\u00A0${stats.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
             trend="0% vs mês anterior"
             icon="trending_up"
             iconColor="text-emerald-500 bg-emerald-500/10"
@@ -263,7 +262,7 @@ const Dashboard: React.FC = () => {
 
           <StatCard
             label="Despesas Período"
-            value={loading ? '...' : `R$\u00A0${stats.expenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+            value={loading ? '...' : `R$\u00A0${stats.expenses.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
             trend="0% vs mês anterior"
             icon="trending_down"
             iconColor="text-red-500 bg-red-500/10"
@@ -273,7 +272,7 @@ const Dashboard: React.FC = () => {
 
           <StatCard
             label="Saldo Líquido"
-            value={loading ? '...' : `R$\u00A0${stats.balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+            value={loading ? '...' : `R$\u00A0${stats.balance.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
             trend="Consolidado"
             icon="account_balance_wallet"
             iconColor="text-primary bg-primary/10"
@@ -281,7 +280,7 @@ const Dashboard: React.FC = () => {
           />
 
           <div
-            className="flex flex-col gap-1.5 sm:gap-2 rounded-xl p-4 sm:p-6 bg-slate-950 border border-slate-800 shadow-lg group hover:border-amber-500/50 transition-all cursor-pointer relative overflow-hidden active:scale-95"
+            className="flex flex-col gap-1.5 sm:gap-2 rounded-xl p-4 sm:p-6 bg-slate-950 border border-slate-800 shadow-lg group hover:border-amber-500/50 transition-all cursor-pointer relative overflow-hidden active:scale-95 min-w-0"
             onClick={() => navigate('/review')}
           >
             <div className="flex items-center justify-between relative z-10">
@@ -434,7 +433,7 @@ const Dashboard: React.FC = () => {
                       origin={tx.is_ai ? 'WhatsApp IA' : 'Manual'}
                       originIcon={tx.is_ai ? 'auto_awesome' : 'edit_note'}
                       date={formatDate(tx.date)}
-                      value={`${tx.type === 'income' ? '+' : '-'} R$\u00A0${tx.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                      value={`${tx.type === 'income' ? '+' : '-'} R$\u00A0${tx.value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
                       status={tx.status === 'confirmed' ? 'success' : 'review'}
                       iconColor={tx.categories?.color || 'text-primary bg-blue-100 dark:bg-blue-900/30'}
                       valueColor={tx.type === 'income' ? 'text-primary' : 'text-red-500'}
@@ -451,7 +450,7 @@ const Dashboard: React.FC = () => {
 };
 
 const StatCard = ({ label, value, trend, icon, iconColor, valueColor, trendColor }: any) => (
-  <div className="flex flex-col gap-1.5 sm:gap-2 rounded-xl p-4 sm:p-6 bg-white dark:bg-slate-850 border border-[#e7edf3] dark:border-slate-800 shadow-sm group hover:border-primary/30 transition-all">
+  <div className="flex flex-col gap-1.5 sm:gap-2 rounded-xl p-4 sm:p-6 bg-white dark:bg-slate-850 border border-[#e7edf3] dark:border-slate-800 shadow-sm group hover:border-primary/30 transition-all min-w-0">
     <div className="flex items-center justify-between">
       <p className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs font-bold uppercase tracking-wider">{label}</p>
       <span className={`material-symbols-outlined ${iconColor} p-1.5 sm:p-2 rounded-lg text-lg sm:text-xl shrink-0`}>{icon}</span>
@@ -480,12 +479,12 @@ const ChartBar = ({ label, income, expense, highlighted }: any) => (
 );
 
 const CategoryLabel = ({ name, percentage, amount, color }: any) => (
-  <div className="flex items-center justify-between">
-    <div className="flex items-center gap-2">
-      <span className={`w-3 h-3 rounded-full ${color}`}></span>
-      <span className="text-sm text-slate-600 dark:text-slate-300">{name} ({percentage}%)</span>
+  <div className="flex items-center justify-between gap-4">
+    <div className="flex items-center gap-2 min-w-0">
+      <span className={`w-3 h-3 rounded-full shrink-0 ${color}`}></span>
+      <span className="text-sm text-slate-600 dark:text-slate-300 truncate">{name} ({percentage}%)</span>
     </div>
-    <span className="text-sm font-bold text-slate-900 dark:text-white whitespace-nowrap">{"R$\u00A0"}{amount}</span>
+    <span className="text-sm font-bold text-slate-900 dark:text-white whitespace-nowrap shrink-0">{"R$\u00A0"}{amount}</span>
   </div>
 );
 

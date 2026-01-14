@@ -27,6 +27,7 @@ const IntegrationConfig: React.FC = () => {
   const [isWebhookActive, setIsWebhookActive] = React.useState(false);
   const [webhookLoading, setWebhookLoading] = React.useState(false);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
+  const [searchTerm, setSearchTerm] = React.useState('');
 
   // New Instance Management States
   const [isInstanceModalOpen, setIsInstanceModalOpen] = React.useState(false);
@@ -494,25 +495,23 @@ const IntegrationConfig: React.FC = () => {
   return (
     <div className="flex-1 flex flex-col">
       {/* Header Area */}
-      <div className="w-full px-8 py-6 border-b border-[#e7edf3] dark:border-slate-800">
-        <div className="max-w-[1200px] mx-auto">
-          <PageHeader
-            title="Configuração de Integração WhatsApp"
-            description="Conecte sua conta para permitir que a IA leia faturas, boletos e comprovantes diretamente das suas conversas financeiras."
-            actions={
-              <button
-                onClick={() => navigate('/integration')}
-                className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-6 py-2.5 rounded-lg font-bold text-sm shadow-lg shadow-primary/20 transition-all active:scale-95"
-              >
-                <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-                <span>Voltar</span>
-              </button>
-            }
-          />
-        </div>
+      <div className="w-full py-4 border-b border-[#e7edf3] dark:border-slate-800">
+        <PageHeader
+          title="Configuração de Integração WhatsApp"
+          description="Conecte sua conta para permitir que a IA leia faturas, boletos e comprovantes diretamente das suas conversas financeiras."
+          actions={
+            <button
+              onClick={() => navigate('/integration')}
+              className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-6 py-2.5 rounded-lg font-bold text-sm shadow-lg shadow-primary/20 transition-all active:scale-95"
+            >
+              <span className="material-symbols-outlined text-[20px]">arrow_back</span>
+              <span>Voltar</span>
+            </button>
+          }
+        />
       </div>
 
-      <div className="layout-container flex h-full grow flex-col w-full mx-auto max-w-[1200px] px-4 md:px-6 lg:px-8 py-8 pt-4">
+      <div className="space-y-8 pt-8 w-full">
 
 
 
@@ -536,7 +535,7 @@ const IntegrationConfig: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             {/* Left Column: Connection & Rules */}
-            <div className="flex-1 w-full max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+            <div className="lg:col-span-7 flex flex-col gap-6">
 
 
 
@@ -823,35 +822,49 @@ const IntegrationConfig: React.FC = () => {
                   </div>
                   <div className="relative group">
                     <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors text-[20px]">search</span>
-                    <input className="w-full pl-10 pr-4 py-2.5 rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 dark:text-white" placeholder="Buscar contatos monitorados..." type="text" />
+                    <input
+                      className="w-full pl-10 pr-4 py-2.5 rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-900 dark:text-white"
+                      placeholder="Buscar contatos monitorados..."
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
                   </div>
                 </div>
                 <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
-                  {monitoredContacts.length > 0 ? (
-                    monitoredContacts.map(contact => (
-                      <ChatSourceItem
-                        key={contact.id}
-                        name={contact.name}
-                        type={contact.category}
-                        initials={contact.name.substring(0, 2).toUpperCase()}
-                        active={true}
-                        imageUrl={contact.photo_url}
-                        onViewMessages={() => {
-                          setSelectedContact(contact);
-                          setIsMessagesTrayOpen(true);
-                        }}
-                        onToggle={async () => {
-                          const { error } = await supabase
-                            .from('contacts')
-                            .update({ whatsapp_monitoring: false })
-                            .eq('id', contact.id);
-                          if (!error) {
-                            setMonitoredContacts(prev => prev.filter(c => c.id !== contact.id));
-                            toast.success('Monitoramento removido.');
-                          }
-                        }}
-                      />
-                    ))
+                  {monitoredContacts.filter(c =>
+                    c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    c.phone.includes(searchTerm)
+                  ).length > 0 ? (
+                    monitoredContacts
+                      .filter(c =>
+                        c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        c.phone.includes(searchTerm)
+                      )
+                      .map(contact => (
+                        <ChatSourceItem
+                          key={contact.id}
+                          name={contact.name}
+                          type={contact.category}
+                          initials={contact.name.substring(0, 2).toUpperCase()}
+                          active={true}
+                          imageUrl={contact.photo_url}
+                          onViewMessages={() => {
+                            setSelectedContact(contact);
+                            setIsMessagesTrayOpen(true);
+                          }}
+                          onToggle={async () => {
+                            const { error } = await supabase
+                              .from('contacts')
+                              .update({ whatsapp_monitoring: false })
+                              .eq('id', contact.id);
+                            if (!error) {
+                              setMonitoredContacts(prev => prev.filter(c => c.id !== contact.id));
+                              toast.success('Monitoramento removido.');
+                            }
+                          }}
+                        />
+                      ))
                   ) : (
                     <div className="flex flex-col items-center justify-center h-full text-slate-400 p-8 text-center">
                       <span className="material-symbols-outlined text-4xl mb-2">contact_support</span>

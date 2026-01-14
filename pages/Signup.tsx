@@ -82,7 +82,7 @@ const Signup: React.FC = () => {
   return (
     <div className="min-h-screen flex w-full font-display antialiased text-slate-900 bg-background-light dark:bg-background-dark dark:text-slate-100">
       {/* Left Section: Form */}
-      <div className="flex-1 flex flex-col justify-center px-4 py-12 sm:px-6 lg:flex-none lg:px-20 xl:px-24 bg-white dark:bg-slate-900 z-10 w-full lg:w-[45%] xl:w-[40%]">
+      <div className="flex-1 flex flex-col justify-center px-4 sm:px-10 md:px-16 lg:px-20 xl:px-24 bg-white dark:bg-slate-900 z-10 w-full lg:w-[45%] xl:w-[40%]">
         <div className="mx-auto w-full max-w-sm lg:w-96">
           {/* Header with Logo */}
           <div className="mb-10">

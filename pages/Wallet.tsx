@@ -308,34 +308,32 @@ const Wallet: React.FC = () => {
   return (
     <div className="flex-1 flex flex-col relative animate-in fade-in duration-500">
       {/* Header Area */}
-      <div className="w-full px-8 py-6 border-b border-[#e7edf3] dark:border-slate-800">
-        <div className="max-w-[1400px] mx-auto">
-          <PageHeader
-            title="Gerenciamento Financeiro"
-            description="Configure suas contas bancárias e defina categorias de despesas. A nossa IA utilizará essas definições para classificar automaticamente suas mensagens do WhatsApp."
-            actions={
-              <div className="flex items-center gap-2 sm:gap-3">
-                <button
-                  onClick={fetchWalletData}
-                  className="inline-flex items-center justify-center px-3 sm:px-4 py-2 bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors gap-2 shadow-sm active:scale-95"
-                >
-                  <span className="material-symbols-outlined text-[20px]">refresh</span>
-                </button>
-                <button
-                  onClick={() => setIsAccountModalOpen(true)}
-                  className="inline-flex items-center justify-center px-3 sm:px-4 py-2 bg-primary rounded-lg text-sm font-bold text-white hover:bg-primary transition-colors gap-2 shadow-sm shadow-primary/30 active:scale-95"
-                >
-                  <span className="material-symbols-outlined text-[20px]">add</span>
-                  <span className="hidden sm:inline">Nova Conta</span>
-                  <span className="sm:hidden">Conta</span>
-                </button>
-              </div>
-            }
-          />
-        </div>
+      <div className="w-full py-4 border-b border-[#e7edf3] dark:border-slate-800">
+        <PageHeader
+          title="Gerenciamento Financeiro"
+          description="Configure suas contas bancárias e defina categorias de despesas. A nossa IA utilizará essas definições para classificar automaticamente suas mensagens do WhatsApp."
+          actions={
+            <div className="flex items-center gap-2 sm:gap-3">
+              <button
+                onClick={fetchWalletData}
+                className="inline-flex items-center justify-center px-3 sm:px-4 py-2 bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors gap-2 shadow-sm active:scale-95"
+              >
+                <span className="material-symbols-outlined text-[20px]">refresh</span>
+              </button>
+              <button
+                onClick={() => setIsAccountModalOpen(true)}
+                className="inline-flex items-center justify-center px-3 sm:px-4 py-2 bg-primary rounded-lg text-sm font-bold text-white hover:bg-primary transition-colors gap-2 shadow-sm shadow-primary/30 active:scale-95"
+              >
+                <span className="material-symbols-outlined text-[20px]">add</span>
+                <span className="hidden sm:inline">Nova Conta</span>
+                <span className="sm:hidden">Conta</span>
+              </button>
+            </div>
+          }
+        />
       </div>
 
-      <div className="max-w-7xl mx-auto space-y-8 p-8 w-full">
+      <div className="space-y-8 pt-8 w-full">
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
           {/* Left Column: Accounts (Wallet) */}
           <div className="xl:col-span-5 space-y-6">
@@ -347,7 +345,7 @@ const Wallet: React.FC = () => {
               <div className="flex flex-col gap-1.5 sm:gap-2 rounded-xl p-4 sm:p-6 bg-white dark:bg-slate-850 border border-[#e7edf3] dark:border-slate-800 shadow-sm transition-all text-right">
                 <p className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs font-bold uppercase tracking-wider">Saldo Total</p>
                 <p className="text-xl sm:text-2xl font-bold tracking-tight text-emerald-500">
-                  R$ {Math.abs(totalBalance).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  R$ {Math.abs(totalBalance).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
               </div>
             </div>
@@ -363,7 +361,7 @@ const Wallet: React.FC = () => {
                     key={acc.id}
                     name={acc.name}
                     type={acc.type || 'Geral'}
-                    balance={Number(acc.currentBalance).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    balance={Number(acc.currentBalance).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     logo={acc.name.substring(0, 2)}
                     logoIcon={acc.icon}
                     color={acc.color || 'bg-primary'}
@@ -418,7 +416,7 @@ const Wallet: React.FC = () => {
                     name={cat.name}
                     icon={cat.icon || 'label'}
                     iconColor={cat.color || 'bg-slate-100 text-slate-600'}
-                    spent={Number(cat.spent || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    spent={Number(cat.spent || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     budget={cat.budget}
                     percentage={cat.percentage}
                     subcategories={cat.subcategories}
@@ -707,7 +705,7 @@ const Wallet: React.FC = () => {
 
 // Subcomponents helper (Updated types for safety)
 const AccountCard = ({ name, type, balance, logo, logoIcon, color, update, trend, isNegative, progress, onEdit, onDelete }: any) => (
-  <div className="flex flex-col gap-1.5 sm:gap-2 rounded-xl p-4 sm:p-6 bg-white dark:bg-slate-850 border border-[#e7edf3] dark:border-slate-800 shadow-sm group hover:border-primary/30 transition-all relative overflow-hidden">
+  <div className="flex flex-col gap-1.5 sm:gap-2 rounded-xl p-4 sm:p-6 bg-white dark:bg-slate-850 border border-[#e7edf3] dark:border-slate-800 shadow-sm group hover:border-primary/30 transition-all relative overflow-hidden min-w-0">
     <div className="flex items-start justify-between mb-1">
       <div className="flex items-center gap-3 min-w-0">
         <div className={`size-10 sm:size-12 rounded-2xl ${color} flex items-center justify-center text-white shrink-0 font-bold text-lg sm:text-xl shadow-lg shadow-black/10 border border-white/20 overflow-hidden relative group-hover:scale-105 transition-transform`}>

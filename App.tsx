@@ -56,6 +56,33 @@ const AppContent = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut } = useAuth();
+
+  // Bloquear scroll do body quando o menu mobile estiver aberto
+  React.useEffect(() => {
+    if (isMobileMenuOpen) {
+      const scrollY = window.scrollY;
+      document.body.style.overflow = 'hidden';
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = '100%';
+    } else {
+      const scrollY = document.body.style.top;
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+      if (scrollY) {
+        window.scrollTo(0, parseInt(scrollY || '0') * -1);
+      }
+    }
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+    };
+  }, [isMobileMenuOpen]);
+
   const isAuthPage = location.pathname === '/login' || location.pathname === '/signup';
   if (isAuthPage || location.pathname === '/forgot-password' || location.pathname === '/reset-password' || location.pathname === '/terms' || location.pathname === '/privacy' || location.pathname === '/help') {
     return (
@@ -79,17 +106,24 @@ const AppContent = () => {
       {/* Mobile Sidebar Overlay */}
       {isMobileMenuOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 xl:hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 xl:hidden transition-opacity duration-300"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
 
       {/* Mobile Sidebar */}
-      <div className={`fixed inset-y-0 left-0 w-64 bg-white dark:bg-slate-900 z-50 transform transition-transform xl:hidden overflow-hidden flex flex-col ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        <div className="p-6 pb-2">
+      <div className={`fixed inset-y-0 left-0 w-[280px] sm:w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 z-50 transform transition-transform duration-300 xl:hidden overflow-hidden flex flex-col shadow-2xl overscroll-contain ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="p-6 pb-2 flex items-center justify-between">
           <div className="flex items-center">
             <VersixLogo className="h-[55px] w-auto" />
           </div>
+          <button
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 xl:hidden outline-none"
+            aria-label="Fechar menu"
+          >
+            <span className="material-symbols-outlined text-2xl">close</span>
+          </button>
         </div>
         <SidebarContent locationPath={location.pathname} onItemClick={() => setIsMobileMenuOpen(false)} />
 
@@ -112,7 +146,7 @@ const AppContent = () => {
       <div className="flex-1 flex flex-col xl:ml-64 h-full overflow-hidden">
         <Header onToggleMobileMenu={() => setIsMobileMenuOpen(true)} />
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-8">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8">
           <div className="max-w-[1400px] mx-auto">
             <Routes>
               <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
@@ -131,9 +165,6 @@ const AppContent = () => {
               <Route path="/team" element={<ProtectedRoute><Team /></ProtectedRoute>} />
               <Route path="/team/new" element={<ProtectedRoute><NewTeamMember /></ProtectedRoute>} />
               <Route path="/team/edit/:id" element={<ProtectedRoute><NewTeamMember /></ProtectedRoute>} />
-              import NewSeller from './pages/NewSeller';
-
-              // ... (Inside Routes)
 
               <Route path="/sellers" element={<ProtectedRoute><Sellers /></ProtectedRoute>} />
               <Route path="/sellers/new" element={<ProtectedRoute><NewSeller /></ProtectedRoute>} />
