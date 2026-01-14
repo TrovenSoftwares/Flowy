@@ -72,9 +72,9 @@ const Integration: React.FC = () => {
 
       setIntegrations(data || []);
 
-      // Calculate stats
-      const groupsCount = (data || []).filter(c => c.category === 'Grupo').length; // Fallback if we use category
-      const contactsCount = (data || []).filter(c => c.category !== 'Grupo').length;
+      // Calculate stats - usando is_group para grupos
+      const groupsCount = (data || []).filter(c => c.is_group === true).length;
+      const contactsCount = (data || []).filter(c => c.is_group !== true).length;
 
       setStats({
         activeSources: data?.length || 0,
@@ -194,8 +194,8 @@ const Integration: React.FC = () => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (item.phone && item.phone.includes(searchTerm));
     const matchesType = typeFilter === 'Todos os Tipos' ||
-      (typeFilter === 'Grupos' && item.category === 'Grupo') ||
-      (typeFilter === 'Contatos' && item.category !== 'Grupo');
+      (typeFilter === 'Grupos' && item.is_group === true) ||
+      (typeFilter === 'Contatos' && item.is_group !== true);
     const matchesStatus = statusFilter === 'Status: Todos' ||
       (statusFilter === 'Ativos' && item.whatsapp_monitoring) ||
       (statusFilter === 'Pausados' && !item.whatsapp_monitoring);

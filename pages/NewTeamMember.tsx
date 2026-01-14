@@ -6,6 +6,7 @@ import InputMask from '../components/InputMask';
 import { MASKS } from '../utils/utils';
 import { toast } from 'react-hot-toast';
 import PageHeader from '../components/PageHeader';
+import Modal from '../components/Modal';
 
 const NewTeamMember: React.FC = () => {
     const navigate = useNavigate();
@@ -50,12 +51,22 @@ const NewTeamMember: React.FC = () => {
     const handleSearchGroups = async () => {
         console.log('[DEBUG] handleSearchGroups chamado');
         console.log('[DEBUG] instanceName:', instanceName);
+        console.log('[DEBUG] formData.name:', formData.name);
+
         if (!instanceName) {
             toast.error('Nenhuma instância WhatsApp configurada.');
             return;
         }
+
+        if (!formData.name.trim()) {
+            toast.error('Digite o nome do grupo para buscar.');
+            return;
+        }
+
         setLoadingGroups(true);
+        setGroupSearch(formData.name); // Pré-preenche a busca com o nome digitado
         setGroupModalOpen(true);
+
         try {
             console.log('[DEBUG] Chamando evolutionApi.fetchGroups com:', instanceName);
             const groups = await evolutionApi.fetchGroups(instanceName);
@@ -338,73 +349,75 @@ const NewTeamMember: React.FC = () => {
             </div>
 
             {/* Modal de Seleção de Grupos */}
-            {groupModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-in fade-in duration-200">
-                    <div className="bg-white dark:bg-slate-850 rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col border border-slate-200 dark:border-slate-700 animate-in zoom-in-95 duration-200">
-                        <div className="flex items-center justify-between p-5 border-b border-slate-200 dark:border-slate-700">
-                            <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                                <span className="material-symbols-outlined text-primary">groups</span>
-                                Selecionar Grupo
-                            </h3>
-                            <button
-                                onClick={() => setGroupModalOpen(false)}
-                                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                            >
-                                <span className="material-symbols-outlined text-slate-500">close</span>
-                            </button>
-                        </div>
-                        <div className="p-4 border-b border-slate-100 dark:border-slate-700">
-                            <div className="relative">
-                                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
-                                    <span className="material-symbols-outlined text-[20px]">search</span>
-                                </span>
-                                <input
-                                    className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 dark:text-white"
-                                    placeholder="Buscar grupo pelo nome..."
-                                    value={groupSearch}
-                                    onChange={(e) => setGroupSearch(e.target.value)}
-                                    autoFocus
-                                />
+            <Modal
+                isOpen={groupModalOpen}
+                onClose={() => setGroupModalOpen(false)}
+                title="Selecionar Grupo do WhatsApp"
+                footer={
+                    <p className="text-xs text-slate-500">
+                        <span className="font-bold text-primary">{filteredGroups.length}</span> grupo(s) encontrado(s)
+                    </p>
+                }
+            >
+                <div className="flex flex-col gap-4">
+                    {/* Campo de Busca */}
+                    <div className="relative">
+                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                            <span className="material-symbols-outlined text-[20px]">search</span>
+                        </span>
+                        <input
+                            className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary dark:text-white transition-all"
+                            placeholder="Filtrar grupos pelo nome..."
+                            value={groupSearch}
+                            onChange={(e) => setGroupSearch(e.target.value)}
+                            autoFocus
+                        />
+                    </div>
+
+                    {/* Lista de Grupos */}
+                    <div className="max-h-[300px] overflow-y-auto -mx-2">
+                        {loadingGroups ? (
+                            <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+                                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mb-4"></div>
+                                <p className="text-sm font-medium">Buscando grupos do WhatsApp...</p>
                             </div>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-2">
-                            {loadingGroups ? (
-                                <div className="flex flex-col items-center justify-center py-12 text-slate-400">
-                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-3"></div>
-                                    <p className="text-sm">Buscando grupos...</p>
+                        ) : filteredGroups.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+                                <div className="size-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4">
+                                    <span className="material-symbols-outlined text-3xl">group_off</span>
                                 </div>
-                            ) : filteredGroups.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-12 text-slate-400">
-                                    <span className="material-symbols-outlined text-4xl mb-2">group_off</span>
-                                    <p className="text-sm">{groupSearch ? 'Nenhum grupo encontrado.' : 'Nenhum grupo disponível.'}</p>
-                                </div>
-                            ) : (
-                                <div className="grid gap-1">
-                                    {filteredGroups.map((group, idx) => (
-                                        <button
-                                            key={group.id || group.jid || idx}
-                                            onClick={() => handleSelectGroup(group)}
-                                            className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-left w-full"
-                                        >
-                                            <div className="size-10 rounded-xl bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20">
-                                                <span className="material-symbols-outlined text-indigo-500 text-[20px]">groups</span>
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{group.subject || group.name || 'Sem nome'}</p>
-                                                <p className="text-xs text-slate-400 font-mono truncate">{group.id || group.jid}</p>
-                                            </div>
-                                            <span className="material-symbols-outlined text-slate-300 text-lg">chevron_right</span>
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                        <div className="p-4 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
-                            <p className="text-xs text-slate-500 text-center">{filteredGroups.length} grupo(s) encontrado(s)</p>
-                        </div>
+                                <p className="text-sm font-medium">{groupSearch ? 'Nenhum grupo encontrado para esta busca.' : 'Nenhum grupo disponível.'}</p>
+                                <p className="text-xs text-slate-400 mt-1">Verifique se você está em algum grupo no WhatsApp.</p>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col gap-1 px-2">
+                                {filteredGroups.map((group, idx) => (
+                                    <button
+                                        key={group.id || group.jid || idx}
+                                        onClick={() => handleSelectGroup(group)}
+                                        className="flex items-center gap-3 p-3 rounded-xl hover:bg-primary/5 dark:hover:bg-primary/10 border border-transparent hover:border-primary/20 transition-all text-left w-full group"
+                                    >
+                                        <div className="size-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/10 group-hover:scale-105 transition-transform">
+                                            <span className="material-symbols-outlined text-primary text-[24px]">groups</span>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-bold text-slate-900 dark:text-white truncate group-hover:text-primary transition-colors">
+                                                {group.subject || group.name || 'Sem nome'}
+                                            </p>
+                                            <p className="text-[11px] text-slate-400 font-mono truncate">
+                                                {group.id || group.jid}
+                                            </p>
+                                        </div>
+                                        <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <span className="material-symbols-outlined text-primary text-lg">check</span>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
-            )}
+            </Modal>
         </div>
     );
 };

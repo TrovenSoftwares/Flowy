@@ -196,7 +196,7 @@ export const evolutionApi = {
 
     async fetchGroups(instanceName: string) {
         try {
-            const response = await fetch(`${EVO_URL}/group/fetchAllGroups/${encodeURIComponent(instanceName)}`, {
+            const response = await fetch(`${EVO_URL}/group/fetchAllGroups/${encodeURIComponent(instanceName)}?getParticipants=false`, {
                 method: 'GET',
                 headers: { 'apikey': EVO_API_KEY }
             });

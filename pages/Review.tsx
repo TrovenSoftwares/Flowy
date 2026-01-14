@@ -598,7 +598,7 @@ const Review: React.FC = () => {
 
       const { data: cats } = await supabase.from('categories').select('*').order('name');
       const { data: accs } = await supabase.from('accounts').select('*');
-      const { data: contacts } = await supabase.from('contacts').select('id, phone, name, category, whatsapp_monitoring, photo_url');
+      const { data: contacts } = await supabase.from('contacts').select('id, phone, name, category, whatsapp_monitoring, photo_url, whatsapp_id');
 
       let groupedCats: any[] = [];
       if (cats) {
@@ -622,13 +622,23 @@ const Review: React.FC = () => {
         // Robust Phone Matching
         const jidRaw = m.remote_jid.split('@')[0].replace(/\D/g, '');
         const jidNormalized = (jidRaw.startsWith('55') && jidRaw.length > 10) ? jidRaw.substring(2) : jidRaw;
+        const isGroupMessage = m.is_group || m.remote_jid?.endsWith('@g.us');
 
-        const contact = contacts?.find(c => {
-          if (!c.phone) return false;
-          const phoneRaw = c.phone.replace(/\D/g, '');
-          const phoneNormalized = (phoneRaw.startsWith('55') && phoneRaw.length > 10) ? phoneRaw.substring(2) : phoneRaw;
-          return jidNormalized === phoneNormalized || phoneNormalized.endsWith(jidNormalized) || jidNormalized.endsWith(phoneNormalized);
-        });
+        // Para grupos, buscar pelo whatsapp_id
+        let contact = null;
+        if (isGroupMessage) {
+          contact = contacts?.find(c => c.whatsapp_id === m.remote_jid);
+        } else {
+          contact = contacts?.find(c => {
+            if (!c.phone) return false;
+            const phoneRaw = c.phone.replace(/\D/g, '');
+            const phoneNormalized = (phoneRaw.startsWith('55') && phoneRaw.length > 10) ? phoneRaw.substring(2) : phoneRaw;
+            return jidNormalized === phoneNormalized || phoneNormalized.endsWith(jidNormalized) || jidNormalized.endsWith(phoneNormalized);
+          });
+        }
+
+        // Verificar se contato está com monitoramento ativo
+        const isMonitored = contact?.whatsapp_monitoring === true;
 
         let classification = classifyMessage(m.content || '');
         if (m.status === 'error') classification = 'discard'; // Keep error messages in discard/error tab
@@ -649,11 +659,12 @@ const Review: React.FC = () => {
 
         return {
           ...m,
-          is_group: m.is_group || m.remote_jid?.endsWith('@g.us'),
-          contact_name: contact?.name || (m.is_group ? 'Grupo do WhatsApp' : 'Desconhecido'),
+          is_group: isGroupMessage,
+          contact_name: contact?.name || (isGroupMessage ? 'Grupo do WhatsApp' : 'Desconhecido'),
           contact_id: contact?.id,
           contact_avatar: contact?.photo_url || `https://ui-avatars.com/api/?name=${contact?.name || '?'}&background=random`,
           classification,
+          isMonitored, // Flag para filtrar depois
           editData: {
             value: extracted.value,
             date: formattedDate,
@@ -670,8 +681,11 @@ const Review: React.FC = () => {
         };
       });
 
+      // Filtrar apenas mensagens de contatos/grupos com monitoramento ativo
+      const filteredMsgs = mappedMsgs.filter(m => (m as any).isMonitored === true);
+
       setClients(contacts || []);
-      setMessages(mappedMsgs);
+      setMessages(filteredMsgs);
 
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -989,12 +1003,6 @@ const Review: React.FC = () => {
             Vendas Pendentes ({saleMessages.length})
           </button>
           <button
-            onClick={() => setActiveType('outros')}
-            className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${activeType === 'outros' ? 'border-amber-500 text-amber-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
-          >
-            Outros ({otherMessages.length})
-          </button>
-          <button
             onClick={() => setActiveType('lixo')}
             className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${activeType === 'lixo' ? 'border-rose-500 text-rose-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
           >
@@ -1002,35 +1010,6 @@ const Review: React.FC = () => {
           </button>
         </div>
       </div>
-
-      {/* Action bar for 'Outros' tab */}
-      {activeType === 'outros' && otherMessages.length > 0 && (
-        <div className="flex justify-end">
-          <button
-            onClick={async () => {
-              setLoading(true);
-              try {
-                const ids = otherMessages.map(m => m.id);
-                const { error } = await supabase
-                  .from('whatsapp_messages')
-                  .update({ status: 'error', ignore_reason: 'Ignorado em lote - sem valor financeiro' })
-                  .in('id', ids);
-                if (error) throw error;
-                toast.success(`${ids.length} mensagem(ns) ignorada(s)!`);
-                setMessages(prev => prev.filter(m => !ids.includes(m.id)));
-              } catch (error) {
-                toast.error('Erro ao ignorar mensagens.');
-              }
-              setLoading(false);
-            }}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-rose-500 text-white font-bold text-sm hover:bg-rose-600 transition-colors shadow-md disabled:opacity-50"
-          >
-            <span className="material-symbols-outlined text-[18px]">delete_sweep</span>
-            Ignorar Todos ({otherMessages.length})
-          </button>
-        </div>
-      )}
 
       {/* Content */}
       <div className="flex flex-col gap-4 min-h-[400px]">
@@ -1073,61 +1052,6 @@ const Review: React.FC = () => {
                 onReject={openIgnoreModal}
                 onAiRefine={handleAiRefine}
               />
-            ) : activeType === 'outros' ? (
-              // Card para mensagens não-financeiras (Outros)
-              <article key={msg.id} className="rounded-xl border border-amber-200 dark:border-amber-900/30 bg-amber-50/50 dark:bg-amber-900/10 p-4 sm:p-5 transition-all">
-                <div className="flex items-start gap-4">
-                  <div className="relative shrink-0">
-                    <img src={msg.contact_avatar} className="size-10 rounded-full border border-slate-200" alt={msg.contact_name} />
-                    {msg.is_group && (
-                      <div className="absolute -right-1 -bottom-1 bg-primary text-white size-5 rounded-full flex items-center justify-center border-2 border-white dark:border-slate-850 shadow-sm">
-                        <span className="material-symbols-outlined text-[12px] font-bold">groups</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2 mb-1">
-                      <p className="text-sm font-bold text-slate-900 dark:text-white truncate">{msg.contact_name}</p>
-                      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-800 shrink-0">
-                        SEM VALOR FINANCEIRO
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-500 mb-2">{new Date(msg.created_at).toLocaleString('pt-BR')}</p>
-                    <div className="bg-white dark:bg-slate-800 rounded-lg p-3 border border-amber-100 dark:border-amber-900/20">
-                      <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap">{msg.content}</p>
-                    </div>
-                    <div className="flex items-center gap-2 mt-3">
-                      <button
-                        onClick={() => {
-                          setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, classification: 'transaction' } : m));
-                          toast.success('Movido para Transações!');
-                        }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-primary hover:text-primary transition-colors"
-                      >
-                        <span className="material-symbols-outlined text-[16px]">swap_horiz</span>
-                        Transação
-                      </button>
-                      <button
-                        onClick={() => {
-                          setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, classification: 'sale' } : m));
-                          toast.success('Movido para Vendas!');
-                        }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:border-primary hover:text-primary transition-colors"
-                      >
-                        <span className="material-symbols-outlined text-[16px]">storefront</span>
-                        Venda
-                      </button>
-                      <button
-                        onClick={() => openIgnoreModal(msg.id)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-rose-600 bg-white dark:bg-slate-800 border border-rose-200 dark:border-rose-900/30 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors ml-auto"
-                      >
-                        <span className="material-symbols-outlined text-[16px]">delete</span>
-                        Ignorar
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </article>
             ) : (
               // Discarded / Error View
               <article key={msg.id} className="rounded-xl border border-rose-100 dark:border-rose-900/30 bg-rose-50/50 dark:bg-rose-900/10 p-4 flex justify-between items-center opacity-75 hover:opacity-100 transition-opacity">

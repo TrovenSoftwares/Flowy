@@ -42,15 +42,50 @@ const Team: React.FC = () => {
       const members = contactsData?.length || 0;
       const monitored = contactsData?.filter(c => c.whatsapp_monitoring).length || 0;
 
-      const { count: pendingCount } = await supabase
-        .from('whatsapp_messages')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'pending');
+      // Buscar contatos monitorados para filtrar mensagens
+      const monitoredContacts = (contactsData || []).filter(c => c.whatsapp_monitoring);
+
+      // Criar lista de JIDs/phones para filtrar
+      const monitoredJids: string[] = [];
+      monitoredContacts.forEach(c => {
+        // Para grupos: usar whatsapp_id (JID do grupo)
+        if (c.is_group && c.whatsapp_id) {
+          monitoredJids.push(c.whatsapp_id);
+        }
+        // Para contatos individuais: usar phone
+        else if (!c.is_group && c.phone) {
+          const phoneClean = c.phone.replace(/\D/g, '');
+          monitoredJids.push(`${phoneClean}@s.whatsapp.net`);
+          // Adicionar variações com/sem código do país
+          if (phoneClean.startsWith('55')) {
+            monitoredJids.push(`${phoneClean.substring(2)}@s.whatsapp.net`);
+          } else {
+            monitoredJids.push(`55${phoneClean}@s.whatsapp.net`);
+          }
+        }
+      });
+
+      // Buscar mensagens pendentes apenas dos contatos monitorados
+      let pendingCount = 0;
+      if (monitoredJids.length > 0) {
+        const { data: pendingMsgs } = await supabase
+          .from('whatsapp_messages')
+          .select('remote_jid')
+          .eq('status', 'pending');
+
+        // Filtrar mensagens que são de contatos monitorados
+        if (pendingMsgs) {
+          pendingCount = pendingMsgs.filter(msg => {
+            const msgJid = msg.remote_jid;
+            return monitoredJids.some(jid => msgJid.includes(jid.split('@')[0]));
+          }).length;
+        }
+      }
 
       setStats({
         totalMembers: members,
         monitored,
-        pending: pendingCount || 0
+        pending: pendingCount
       });
 
     } catch (error: any) {
