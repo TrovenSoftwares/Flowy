@@ -249,35 +249,30 @@ const NewTransaction: React.FC = () => {
         <form className="p-6 md:p-8 space-y-8" onSubmit={handleSubmit}>
           {/* Value and Date Row */}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
-            <div className="md:col-span-7 space-y-2">
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Valor da Transação</label>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
-                  <span className="text-slate-400 font-medium text-lg">R$</span>
-                </div>
-                <InputMask
-                  mask={MASKS.CURRENCY}
-                  className="block w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-3xl font-bold text-slate-900 dark:text-white placeholder:text-slate-300 focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none"
-                  placeholder="0,00"
-                  value={formData.value}
-                  onAccept={(val) => setFormData({ ...formData, value: val })}
-                />
-              </div>
+            <div className="md:col-span-7">
+              <InputMask
+                label="Valor da Transação"
+                mask={MASKS.CURRENCY}
+                className="block w-full pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-3xl font-bold text-slate-900 dark:text-white placeholder:text-slate-300 focus:ring-2 focus:ring-primary focus:border-transparent transition-all outline-none"
+                placeholder="0,00"
+                value={formData.value}
+                onAccept={(val) => setFormData({ ...formData, value: val })}
+                leftIcon={<span className="text-slate-400 font-medium text-lg">R$</span>}
+              />
             </div>
-            <div className="md:col-span-5 space-y-2">
+            <div className="md:col-span-5">
               <Input
                 label={transactionMode === 'transfer' ? 'Data da Transferência' : 'Data de Pagamento'}
                 type="date"
                 value={formData.date}
                 onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                className="h-[58px]" // Match InputMask height roughly or standard height
               />
             </div>
           </div>
 
           {/* Description & Optional Contact */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className={`space-y-0 ${transactionMode === 'transfer' || transactionMode === 'expense' ? 'md:col-span-2' : ''}`}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+            <div className={`${transactionMode === 'transfer' || transactionMode === 'expense' ? 'md:col-span-2' : ''}`}>
               <Input
                 label="Descrição"
                 placeholder={transactionMode === 'transfer' ? 'Ex: Transferência para Poupança' : 'Ex: Venda de Produto X'}
@@ -287,16 +282,14 @@ const NewTransaction: React.FC = () => {
               />
             </div>
             {transactionMode === 'income' && (
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Cliente</label>
-                <CustomSelect
-                  value={formData.contact_id}
-                  onChange={(val) => setFormData({ ...formData, contact_id: val })}
-                  placeholder="Selecione o cliente (opcional)"
-                  icon="person"
-                  options={contacts.filter(c => c.category === 'Cliente').map(c => ({ value: c.id, label: c.name }))}
-                />
-              </div>
+              <CustomSelect
+                label="Cliente"
+                value={formData.contact_id}
+                onChange={(val) => setFormData({ ...formData, contact_id: val })}
+                placeholder="Selecione o cliente (opcional)"
+                icon="person"
+                options={contacts.filter(c => c.category === 'Cliente').map(c => ({ value: c.id, label: c.name }))}
+              />
             )}
           </div>
 
@@ -308,55 +301,41 @@ const NewTransaction: React.FC = () => {
             {/* Account Selection */}
             {transactionMode === 'transfer' ? (
               <>
-                <div className="space-y-2">
-                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-red-500">arrow_upward</span>
-                    Conta de Origem (Sai dinheiro)
-                  </label>
-                  <CustomSelect
-                    value={formData.account_id}
-                    onChange={(val) => setFormData({ ...formData, account_id: val })}
-                    placeholder="Selecione a conta de origem"
-                    icon="account_balance"
-                    options={accounts.map(acc => ({ value: acc.id, label: acc.name }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="block text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-                    <span className="material-symbols-outlined text-emerald-500">arrow_downward</span>
-                    Conta de Destino (Entra dinheiro)
-                  </label>
-                  <CustomSelect
-                    value={formData.destination_account_id}
-                    onChange={(val) => setFormData({ ...formData, destination_account_id: val })}
-                    placeholder="Selecione a conta de destino"
-                    icon="account_balance"
-                    options={accounts.map(acc => ({ value: acc.id, label: acc.name }))}
-                  />
-                </div>
+                <CustomSelect
+                  label="Conta de Origem (Sai dinheiro)"
+                  value={formData.account_id}
+                  onChange={(val) => setFormData({ ...formData, account_id: val })}
+                  placeholder="Selecione a conta de origem"
+                  icon="account_balance"
+                  options={accounts.map(acc => ({ value: acc.id, label: acc.name }))}
+                />
+                <CustomSelect
+                  label="Conta de Destino (Entra dinheiro)"
+                  value={formData.destination_account_id}
+                  onChange={(val) => setFormData({ ...formData, destination_account_id: val })}
+                  placeholder="Selecione a conta de destino"
+                  icon="account_balance"
+                  options={accounts.map(acc => ({ value: acc.id, label: acc.name }))}
+                />
               </>
             ) : (
               <>
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Categoria</label>
-                  <CustomSelect
-                    value={formData.category_id}
-                    onChange={(val) => setFormData({ ...formData, category_id: val })}
-                    placeholder="Selecione uma categoria"
-                    icon="label"
-                    options={categories}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Conta Bancária / Cartão</label>
-                  <CustomSelect
-                    value={formData.account_id}
-                    onChange={(val) => setFormData({ ...formData, account_id: val })}
-                    placeholder="Selecione a conta"
-                    icon="account_balance"
-                    options={accounts.map(acc => ({ value: acc.id, label: acc.name }))}
-                  />
-                </div>
+                <CustomSelect
+                  label="Categoria"
+                  value={formData.category_id}
+                  onChange={(val) => setFormData({ ...formData, category_id: val })}
+                  placeholder="Selecione uma categoria"
+                  icon="label"
+                  options={categories}
+                />
+                <CustomSelect
+                  label="Conta Bancária / Cartão"
+                  value={formData.account_id}
+                  onChange={(val) => setFormData({ ...formData, account_id: val })}
+                  placeholder="Selecione a conta"
+                  icon="account_balance"
+                  options={accounts.map(acc => ({ value: acc.id, label: acc.name }))}
+                />
               </>
             )}
 
@@ -445,8 +424,8 @@ const NewTransaction: React.FC = () => {
             </Button>
           </div>
         </form>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 };
 

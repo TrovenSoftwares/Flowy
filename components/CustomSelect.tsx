@@ -16,6 +16,9 @@ interface CustomSelectProps {
     className?: string;
     searchable?: boolean;
     maxHeight?: number;
+    label?: string;
+    error?: string;
+    helperText?: string;
 }
 
 const CustomSelect: React.FC<CustomSelectProps> = ({
@@ -26,7 +29,10 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
     placeholder = 'Selecione...',
     className = '',
     searchable = true,
-    maxHeight = 280
+    maxHeight = 280,
+    label,
+    error,
+    helperText
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [search, setSearch] = useState('');
@@ -166,26 +172,40 @@ const CustomSelect: React.FC<CustomSelectProps> = ({
     };
 
     return (
-        <div className={`relative ${className}`} ref={containerRef}>
-            <button
-                type="button"
-                onClick={() => setIsOpen(!isOpen)}
-                className={`w-full flex items-center justify-between gap-2 h-11 px-4 rounded-xl bg-gray-50 dark:bg-slate-900 border text-sm font-medium transition-all text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-primary/20 ${isOpen ? 'border-primary dark:border-primary ring-2 ring-primary/20 shadow-lg shadow-primary/10' : 'border-gray-200 dark:border-slate-700 hover:border-primary/50'}`}
-            >
-                <div className="flex items-center gap-3 overflow-hidden">
-                    {(selectedOption?.icon || icon) && (
-                        <div className={`size-8 rounded-lg flex items-center justify-center shrink-0 ${isOpen ? 'bg-primary text-white shadow-md shadow-primary/20' : 'bg-gray-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
-                            <span className="material-symbols-outlined text-[18px]">
-                                {selectedOption?.icon || icon}
-                            </span>
-                        </div>
-                    )}
-                    <span className="truncate">{selectedOption ? selectedOption.label : placeholder}</span>
-                </div>
-                <span className={`material-symbols-outlined text-[20px] text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
-                    expand_more
-                </span>
-            </button>
+        <div className={`w-full ${className}`} ref={containerRef}>
+            {label && (
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                    {label}
+                </label>
+            )}
+            <div className="relative">
+                <button
+                    type="button"
+                    onClick={() => setIsOpen(!isOpen)}
+                    className={`w-full flex items-center justify-between gap-2 h-11 px-4 rounded-xl bg-gray-50 dark:bg-slate-900 border text-sm font-medium transition-all text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-primary/20 ${isOpen ? 'border-primary dark:border-primary ring-2 ring-primary/20 shadow-lg shadow-primary/10' : error ? 'border-red-300 dark:border-red-500 ring-red-500/10' : 'border-gray-200 dark:border-slate-700 hover:border-primary/50'}`}
+                >
+                    <div className="flex items-center gap-3 overflow-hidden">
+                        {(selectedOption?.icon || icon) && (
+                            <div className={`size-8 rounded-lg flex items-center justify-center shrink-0 ${isOpen ? 'bg-primary text-white shadow-md shadow-primary/20' : 'bg-gray-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
+                                <span className="material-symbols-outlined text-[18px]">
+                                    {selectedOption?.icon || icon}
+                                </span>
+                            </div>
+                        )}
+                        <span className="truncate">{selectedOption ? selectedOption.label : placeholder}</span>
+                    </div>
+                    <span className={`material-symbols-outlined text-[20px] text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
+                        expand_more
+                    </span>
+                </button>
+            </div>
+
+            {(error || helperText) && (
+                <p className={`mt-1.5 text-xs ${error ? 'text-red-500 font-medium' : 'text-slate-500'}`}>
+                    {error || helperText}
+                </p>
+            )}
+
             {/* Render Portal */}
             {typeof document !== 'undefined' && isOpen && (
                 createPortal(renderDropdown(), document.body)

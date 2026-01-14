@@ -364,15 +364,6 @@ const Contacts: React.FC = () => {
 
 
 
-      // ... (existing imports, keep them)
-
-      // In the component return:
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* ... stats cards ... */}
-      </div>
-
       {/* Filters Area */}
       <Card className="p-4">
         <div className="flex flex-col lg:flex-row gap-4">

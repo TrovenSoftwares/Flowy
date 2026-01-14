@@ -151,20 +151,26 @@ const TransactionReviewCard = ({ msg, categories, accounts, clients, onUpdate, o
             />
           </div>
 
-          <div className="col-span-1">
-            <label className="mb-1 block text-xs font-bold text-slate-500 uppercase tracking-wider">Categoria</label>
-            <CustomSelect
-              value={msg.editData.category_id}
-              onChange={(val) => onUpdate(msg.id, 'category_id', val)}
-              placeholder="Selecionar..."
-              options={categories.map((c: any) => ({ value: c.id, label: c.name, icon: c.icon || 'label' }))}
-            />
-          </div>
+          <CustomSelect
+            label="Categoria"
+            value={msg.editData.category_id}
+            onChange={(val) => onUpdate(msg.id, 'category_id', val)}
+            placeholder="Selecionar..."
+            options={categories}
+          />
+
+          <CustomSelect
+            label="Conta Bancária"
+            value={msg.editData.account_id}
+            onChange={(val) => onUpdate(msg.id, 'account_id', val)}
+            placeholder="Selecionar..."
+            options={accounts.map((a: any) => ({ value: a.id, label: a.name, icon: 'account_balance' }))}
+          />
 
           {msg.editData.type === 'income' && (
             <div className="col-span-1 sm:col-span-2">
-              <label className="mb-1 block text-xs font-bold text-slate-500 uppercase tracking-wider">Cliente (Opcional)</label>
               <CustomSelect
+                label="Cliente (Opcional)"
                 value={msg.editData.client_id}
                 onChange={(val) => onUpdate(msg.id, 'client_id', val)}
                 placeholder="Nenhum / Mesmo do WhatsApp"
@@ -270,8 +276,8 @@ const SaleReviewCard = ({ msg, categories, accounts, clients, sellers, onUpdate,
           </div>
 
           <div className="col-span-1 sm:col-span-2">
-            <label className="mb-1 block text-xs font-bold text-slate-500 uppercase tracking-wider">Cliente</label>
             <CustomSelect
+              label="Cliente"
               value={msg.editData.client_id}
               onChange={(val) => onUpdate(msg.id, 'client_id', val)}
               placeholder="Selecionar Cliente..."
@@ -280,16 +286,22 @@ const SaleReviewCard = ({ msg, categories, accounts, clients, sellers, onUpdate,
             />
           </div>
 
-          <div className="col-span-1">
-            <label className="mb-1 block text-xs font-bold text-slate-500 uppercase tracking-wider">Vendedor</label>
-            <CustomSelect
-              value={msg.editData.seller}
-              onChange={(val) => onUpdate(msg.id, 'seller', val)}
-              placeholder="Selecione..."
-              icon="badge"
-              options={sellers.map((s: any) => ({ value: s.name, label: s.name }))}
-            />
-          </div>
+          <CustomSelect
+            label="Conta Bancária"
+            value={msg.editData.account_id}
+            onChange={(val) => onUpdate(msg.id, 'account_id', val)}
+            placeholder="Selecionar..."
+            options={accounts.map((a: any) => ({ value: a.id, label: a.name, icon: 'account_balance' }))}
+          />
+
+          <CustomSelect
+            label="Vendedor"
+            value={msg.editData.seller}
+            onChange={(val) => onUpdate(msg.id, 'seller', val)}
+            placeholder="Selecione..."
+            icon="badge"
+            options={sellers.map((s: any) => ({ value: s.name, label: s.name }))}
+          />
 
           <div className="col-span-1">
             <label className="mb-1 block text-xs font-bold text-slate-500 uppercase tracking-wider">Peso (ex: 10g)</label>
