@@ -40,6 +40,14 @@ const Settings: React.FC = () => {
   const [newInstanceName, setNewInstanceName] = React.useState('');
   const [isEditingInstance, setIsEditingInstance] = React.useState(false);
   const [isDisconnectModalOpen, setIsDisconnectModalOpen] = React.useState(false);
+  const [apiError, setApiError] = React.useState<{ title: string; message: string; details?: any } | null>(null);
+
+  // Webhook Constants (Same as IntegrationConfig)
+  const DEFAULT_WEBHOOK_URL = 'https://workflows.troven.com.br/webhook/financeiro-ai';
+  const DEFAULT_WEBHOOK_EVENTS = [
+    "GROUPS_UPSERT",
+    "MESSAGES_UPSERT"
+  ];
 
   useEffect(() => {
     fetchSettings();
@@ -481,7 +489,7 @@ const Settings: React.FC = () => {
                       <p className="text-sm text-slate-500 dark:text-slate-400">
                         {status === 'open'
                           ? 'Sua conta está ativa e pronta para uso.'
-                          : 'Escaneie o QR Code para conectar sua conta.'}
+                          : 'Escaneie o QR Code para conectar sua conta (Clique em Gerar se não houver).'}
                       </p>
                     </div>
 
@@ -503,12 +511,63 @@ const Settings: React.FC = () => {
                             }
                             setSaving(true);
                             try {
-                              const data = await evolutionApi.connectInstance(instanceName);
-                              setQrCode(data.base64 || data.code);
-                              setStatus('connecting');
-                              toast.success('QR Code gerado!');
-                            } catch (e) {
-                              toast.error('Erro ao gerar QR Code.');
+                              try {
+                                const data = await evolutionApi.connectInstance(instanceName);
+                                setQrCode(data.base64 || data.code);
+                                setStatus('connecting');
+                                toast.success('QR Code gerado!');
+                              } catch (connectError: any) {
+                                if (connectError?.message?.includes('not found') || (connectError?.response?.status === 404)) {
+                                  // Recreate atomic
+                                  const newToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+
+                                  const extraConfig = {
+                                    rejectCall: false,
+                                    groupsIgnore: false,
+                                    alwaysOnline: false,
+                                    readMessages: false,
+                                    readStatus: false,
+                                    syncFullHistory: true,
+                                    webhook: {
+                                      url: DEFAULT_WEBHOOK_URL,
+                                      byEvents: false,
+                                      base64: true,
+                                      headers: {
+                                        "autorization": `Bearer ${newToken}`,
+                                        "Content-Type": "application/json"
+                                      },
+                                      events: DEFAULT_WEBHOOK_EVENTS
+                                    }
+                                  };
+
+                                  await evolutionApi.createInstance(instanceName, newToken, extraConfig);
+                                  const data = await evolutionApi.connectInstance(instanceName);
+                                  setQrCode(data.base64 || data.code);
+                                  setStatus('connecting');
+
+                                  // Sync to DB
+                                  const { data: { user } } = await supabase.auth.getUser();
+                                  if (user) {
+                                    await supabase.from('instances').upsert({
+                                      user_id: user.id,
+                                      name: instanceName,
+                                      token: newToken,
+                                      status: 'connecting',
+                                      updated_at: new Date().toISOString()
+                                    }, { onConflict: 'user_id,name' });
+                                  }
+                                  toast.success('Instância recriada e QR Code gerado!');
+                                } else {
+                                  throw connectError;
+                                }
+                              }
+                            } catch (e: any) {
+                              console.error(e);
+                              setApiError({
+                                title: 'Erro ao conectar/criar',
+                                message: 'Falha na comunicação com a API do WhatsApp.',
+                                details: e
+                              });
                             } finally {
                               setSaving(false);
                             }
@@ -664,13 +723,29 @@ const Settings: React.FC = () => {
 
                     const instanceToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 
-                    try {
-                      await evolutionApi.createInstance(newInstanceName, instanceToken);
-                    } catch (apiError: any) {
-                      console.log('Instance creation note:', apiError);
-                    }
+                    // 1. Prepare Atomic Config exactly as requested
+                    const extraConfig = {
+                      rejectCall: false,
+                      groupsIgnore: false,
+                      alwaysOnline: false,
+                      readMessages: false,
+                      readStatus: false,
+                      syncFullHistory: true,
+                      webhook: {
+                        url: DEFAULT_WEBHOOK_URL,
+                        byEvents: false,
+                        base64: true,
+                        headers: {
+                          "autorization": `Bearer ${instanceToken}`,
+                          "Content-Type": "application/json"
+                        },
+                        events: DEFAULT_WEBHOOK_EVENTS
+                      }
+                    };
 
-                    // Save to dedicated instances table
+                    await evolutionApi.createInstance(newInstanceName, instanceToken, extraConfig);
+
+                    // 2. Save to dedicated instances table
                     const { error: dbError } = await supabase.from('instances').upsert({
                       user_id: user.id,
                       name: newInstanceName,
@@ -710,6 +785,39 @@ const Settings: React.FC = () => {
                 disabled={saving || !newInstanceName}
               >
                 {saving ? 'Salvando...' : 'Salvar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Error Details Modal */}
+      {apiError && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden border border-red-200 dark:border-red-900/30">
+            <div className="p-6 border-b border-red-50 dark:bg-red-50/10 flex items-center justify-between">
+              <div className="flex items-center gap-3 text-red-600">
+                <span className="material-symbols-outlined text-3xl">error</span>
+                <h3 className="text-xl font-bold">{apiError.title}</h3>
+              </div>
+              <button onClick={() => setApiError(null)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-slate-600 dark:text-slate-400 font-medium">{apiError.message}</p>
+              <div className="bg-slate-900 rounded-xl p-4 overflow-auto max-h-[300px]">
+                <pre className="text-pink-400 font-mono text-xs leading-relaxed whitespace-pre-wrap">
+                  {JSON.stringify(apiError.details, null, 2)}
+                </pre>
+              </div>
+            </div>
+            <div className="p-6 bg-slate-50 dark:bg-slate-800/50 flex justify-end">
+              <button
+                onClick={() => setApiError(null)}
+                className="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-slate-800 transition-all active:scale-95 text-sm"
+              >
+                Entendi
               </button>
             </div>
           </div>

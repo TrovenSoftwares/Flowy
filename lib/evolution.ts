@@ -19,36 +19,28 @@ export const evolutionApi = {
         }
     },
 
-    async createInstance(instanceName: string, token?: string) {
+    async createInstance(instanceName: string, token: string, extraConfig?: any) {
         try {
-            const finalToken = token || Math.random().toString(36).substring(7);
+            const body = {
+                instanceName: instanceName,
+                token: token,
+                qrcode: true,
+                integration: "WHATSAPP-BAILEYS",
+                ...extraConfig
+            };
+
+
             const response = await fetch(`${EVO_URL}/instance/create`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'apikey': EVO_API_KEY
                 },
-                body: JSON.stringify({
-                    instanceName,
-                    token: finalToken,
-                    qrcode: true,
-                    integration: 'WHATSAPP-BAILEYS'
-                })
+                body: JSON.stringify(body)
             });
-
-            if (!response.ok) {
-                const errorData = await response.text();
-                // Check if error is "instance already exists" - 403 or specific message
-                if (response.status === 403 || errorData.includes('already exists')) {
-                    // If it exists, we might still want to return success so the frontend can save the key presumably used? 
-                    // Actually, if it exists we can't change the token usually. 
-                    // But let's throw detailed error so frontend handles it.
-                }
-                console.error('Evolution API Error:', errorData);
-                throw new Error(errorData || 'Failed to create instance');
-            }
-
-            return await response.json();
+            const data = await response.json();
+            if (!response.ok) throw data;
+            return data;
         } catch (error) {
             console.error('Error creating instance:', error);
             throw error;
@@ -57,10 +49,12 @@ export const evolutionApi = {
 
     async connectInstance(instanceName: string) {
         try {
-            const response = await fetch(`${EVO_URL}/instance/connect/${instanceName}`, {
+            const response = await fetch(`${EVO_URL}/instance/connect/${encodeURIComponent(instanceName)}`, {
                 headers: { 'apikey': EVO_API_KEY }
             });
-            return await response.json();
+            const data = await response.json();
+            if (!response.ok) throw data;
+            return data;
         } catch (error) {
             console.error('Error connecting instance:', error);
             throw error;
@@ -69,7 +63,7 @@ export const evolutionApi = {
 
     async getInstanceStatus(instanceName: string) {
         try {
-            const response = await fetch(`${EVO_URL}/instance/connectionState/${instanceName}`, {
+            const response = await fetch(`${EVO_URL}/instance/connectionState/${encodeURIComponent(instanceName)}`, {
                 headers: { 'apikey': EVO_API_KEY }
             });
             const data = await response.json();
@@ -82,7 +76,7 @@ export const evolutionApi = {
 
     async findSettings(instanceName: string) {
         try {
-            const response = await fetch(`${EVO_URL}/settings/find/${instanceName}`, {
+            const response = await fetch(`${EVO_URL}/settings/find/${encodeURIComponent(instanceName)}`, {
                 headers: { 'apikey': EVO_API_KEY }
             });
             return await response.json();
@@ -94,7 +88,7 @@ export const evolutionApi = {
 
     async updateSettings(instanceName: string, settings: any) {
         try {
-            const response = await fetch(`${EVO_URL}/settings/set/${instanceName}`, {
+            const response = await fetch(`${EVO_URL}/settings/set/${encodeURIComponent(instanceName)}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -102,7 +96,9 @@ export const evolutionApi = {
                 },
                 body: JSON.stringify(settings)
             });
-            return await response.json();
+            const data = await response.json();
+            if (!response.ok) throw data;
+            return data;
         } catch (error) {
             console.error('Error updating settings:', error);
             throw error;
@@ -111,11 +107,13 @@ export const evolutionApi = {
 
     async logoutInstance(instanceName: string) {
         try {
-            const response = await fetch(`${EVO_URL}/instance/logout/${instanceName}`, {
+            const response = await fetch(`${EVO_URL}/instance/logout/${encodeURIComponent(instanceName)}`, {
                 method: 'DELETE',
                 headers: { 'apikey': EVO_API_KEY }
             });
-            return await response.json();
+            const data = await response.json();
+            if (!response.ok) throw data;
+            return data;
         } catch (error) {
             console.error('Error logging out:', error);
             throw error;
@@ -124,11 +122,13 @@ export const evolutionApi = {
 
     async deleteInstance(instanceName: string) {
         try {
-            const response = await fetch(`${EVO_URL}/instance/delete/${instanceName}`, {
+            const response = await fetch(`${EVO_URL}/instance/delete/${encodeURIComponent(instanceName)}`, {
                 method: 'DELETE',
                 headers: { 'apikey': EVO_API_KEY }
             });
-            return await response.json();
+            const data = await response.json();
+            if (!response.ok) throw data;
+            return data;
         } catch (error) {
             console.error('Error deleting instance:', error);
             throw error;
@@ -137,7 +137,7 @@ export const evolutionApi = {
 
     async fetchMessages(instanceName: string, remoteJid: string, page = 1) {
         try {
-            const response = await fetch(`${EVO_URL}/chat/fetchMessages/${instanceName}`, {
+            const response = await fetch(`${EVO_URL}/chat/fetchMessages/${encodeURIComponent(instanceName)}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -150,7 +150,9 @@ export const evolutionApi = {
                     page
                 })
             });
-            return await response.json();
+            const data = await response.json();
+            if (!response.ok) return [];
+            return data;
         } catch (error) {
             console.error('Error fetching messages:', error);
             return [];
@@ -159,10 +161,12 @@ export const evolutionApi = {
 
     async findWebhooks(instanceName: string) {
         try {
-            const response = await fetch(`${EVO_URL}/webhook/find/${instanceName}`, {
+            const response = await fetch(`${EVO_URL}/webhook/find/${encodeURIComponent(instanceName)}`, {
                 headers: { 'apikey': EVO_API_KEY }
             });
-            return await response.json();
+            const data = await response.json();
+            if (!response.ok) return null;
+            return data;
         } catch (error) {
             console.error('Error finding webhooks:', error);
             return null;
@@ -171,15 +175,19 @@ export const evolutionApi = {
 
     async setWebhook(instanceName: string, config: any) {
         try {
-            const response = await fetch(`${EVO_URL}/webhook/set/${instanceName}`, {
+            const response = await fetch(`${EVO_URL}/webhooks/set/${encodeURIComponent(instanceName)}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'apikey': EVO_API_KEY
                 },
-                body: JSON.stringify(config)
+                body: JSON.stringify({
+                    webhook: config
+                })
             });
-            return await response.json();
+            const data = await response.json();
+            if (!response.ok) throw data;
+            return data;
         } catch (error) {
             console.error('Error setting webhook:', error);
             throw error;

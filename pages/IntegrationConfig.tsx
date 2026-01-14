@@ -28,6 +28,14 @@ const IntegrationConfig: React.FC = () => {
   const [webhookLoading, setWebhookLoading] = React.useState(false);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState('');
+  const [apiError, setApiError] = React.useState<{ title: string; message: string; details?: any } | null>(null);
+
+  // Webhook Constants
+  const DEFAULT_WEBHOOK_URL = 'https://workflows.troven.com.br/webhook/financeiro-ai';
+  const DEFAULT_WEBHOOK_EVENTS = [
+    "GROUPS_UPSERT",
+    "MESSAGES_UPSERT"
+  ];
 
   // New Instance Management States
   const [isInstanceModalOpen, setIsInstanceModalOpen] = React.useState(false);
@@ -204,6 +212,46 @@ const IntegrationConfig: React.FC = () => {
     }
   }, [checkStatus, instanceName]);
 
+  const handleApplyDefaultWebhook = async (name: string, token: string) => {
+    console.log(`[DEBUG] Aplicando configuração padrão para: ${name}`);
+    try {
+      const webhookPayload = {
+        url: DEFAULT_WEBHOOK_URL,
+        byEvents: false,
+        base64: true, // Requested: true
+        headers: {
+          "autorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        events: DEFAULT_WEBHOOK_EVENTS
+      };
+
+      console.log('[DEBUG] Enviando Webhook Payload:', webhookPayload);
+      const webhookRes = await evolutionApi.setWebhook(name, webhookPayload);
+      console.log('[DEBUG] Resposta Webhook:', webhookRes);
+
+      const settingsPayload = {
+        rejectCall: false,
+        groupsIgnore: false,
+        alwaysOnline: false,
+        readMessages: false,
+        readStatus: false,
+        syncFullHistory: true // Requested: true
+      };
+
+      console.log('[DEBUG] Enviando Settings Payload:', settingsPayload);
+      const settingsRes = await evolutionApi.updateSettings(name, settingsPayload);
+      console.log('[DEBUG] Resposta Settings:', settingsRes);
+
+      setIsWebhookActive(true);
+      setWebhookUrl(DEFAULT_WEBHOOK_URL);
+      return true;
+    } catch (error) {
+      console.error('Failed to apply default webhook:', error);
+      return false;
+    }
+  };
+
   const handleSaveInstanceName = async () => {
     if (!newInstanceName) {
       toast.error('O nome da instância é obrigatório.');
@@ -217,11 +265,40 @@ const IntegrationConfig: React.FC = () => {
 
       const instanceToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 
-      // 1. Create instance in Evolution API
-      // Pass the generated token
-      await evolutionApi.createInstance(newInstanceName, instanceToken);
+      // 1. Prepare Atomic Config exactly as requested
+      const extraConfig = {
+        rejectCall: false,
+        groupsIgnore: false,
+        alwaysOnline: false,
+        readMessages: false,
+        readStatus: false,
+        syncFullHistory: true,
+        webhook: {
+          url: DEFAULT_WEBHOOK_URL,
+          byEvents: false,
+          base64: true, // Requested: true
+          headers: {
+            "autorization": `Bearer ${instanceToken}`,
+            "Content-Type": "application/json"
+          },
+          events: DEFAULT_WEBHOOK_EVENTS
+        }
+      };
 
-      // 2. Save to Supabase Instances Table
+      // 2. Create instance in Evolution API (Atômico)
+      await evolutionApi.createInstance(newInstanceName, instanceToken, extraConfig);
+
+      // Simple delay to let Evo API settle
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      // 3. EXPLICIT CONFIG (Requested: force webhook and settings)
+      console.log('[DEBUG] Aplicando Webhook Explicitamente...');
+      const webhookSuccess = await handleApplyDefaultWebhook(newInstanceName, instanceToken);
+      if (!webhookSuccess) {
+        console.warn('[DEBUG] Webhook explícito falhou, mas continuando...');
+      }
+
+      // 4. Save to Supabase Instances Table
       const { error: dbError } = await supabase.from('instances').upsert({
         user_id: user.id,
         name: newInstanceName,
@@ -232,12 +309,16 @@ const IntegrationConfig: React.FC = () => {
 
       if (dbError) throw dbError;
 
-      // 3. Update user_settings (legacy/sync)
+      // 5. Update user_settings (persistent storage of webhook URL)
       const { error } = await supabase
         .from('user_settings')
         .upsert({
           user_id: user.id,
-          ai_config: { ...aiConfig, whatsappInstance: newInstanceName },
+          ai_config: {
+            ...aiConfig,
+            whatsappInstance: newInstanceName,
+            webhookUrl: DEFAULT_WEBHOOK_URL
+          },
           updated_at: new Date().toISOString()
         }, { onConflict: 'user_id' });
 
@@ -246,17 +327,30 @@ const IntegrationConfig: React.FC = () => {
       setInstanceName(newInstanceName);
       setIsInstanceModalOpen(false);
       setNewInstanceName('');
-      toast.success('Instância configurada! Pronto para conectar.');
 
-      // Trigger QR Code generation automatically
+      // 6. Get QR Code (after all explicit configs)
+      toast.loading('Finalizando e buscando QR Code...', { id: 'create-status' });
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      console.log('[DEBUG] Buscando QR Code via connectInstance...');
       const connectData = await evolutionApi.connectInstance(newInstanceName);
+      console.log('[DEBUG] Retorno connectInstance:', connectData);
+
       if (connectData.base64 || connectData.code) {
         setQrCode(connectData.base64 || connectData.code);
         setStatus('connecting');
+        toast.success('Instância configurada e pronta!', { id: 'create-status' });
+      } else {
+        toast.success('Instância criada! Clique em "Gerar" se o QR não aparecer.', { id: 'create-status' });
       }
     } catch (error: any) {
       console.error('Failed to save instance:', error);
-      toast.error('Erro ao configurar instância. Tente um nome diferente.');
+      setApiError({
+        title: 'Erro ao Criar Instância',
+        message: error.message || 'Ocorreu um erro inesperado na Evolution API.',
+        details: error
+      });
+      // toast.error('Erro ao configurar instância. Tente um nome diferente.');
     } finally {
       setLoading(false);
     }
@@ -289,9 +383,34 @@ const IntegrationConfig: React.FC = () => {
 
         // Let's generate a new token since we are recreating
         const newToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-        await evolutionApi.createInstance(instanceName, newToken);
 
-        const connectData = await evolutionApi.connectInstance(instanceName);
+        const extraConfig = {
+          rejectCall: false,
+          groupsIgnore: false,
+          alwaysOnline: false,
+          readMessages: false,
+          readStatus: false,
+          syncFullHistory: true, // Requested: true
+          webhook: {
+            url: DEFAULT_WEBHOOK_URL,
+            byEvents: false,
+            base64: true, // Requested: true
+            headers: {
+              "autorization": `Bearer ${newToken}`,
+              "Content-Type": "application/json"
+            },
+            events: DEFAULT_WEBHOOK_EVENTS
+          }
+        };
+
+        await evolutionApi.createInstance(instanceName!, newToken, extraConfig);
+
+        // Explicit Config for redundancy
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        await handleApplyDefaultWebhook(instanceName!, newToken);
+        await new Promise(resolve => setTimeout(resolve, 1500));
+
+        const connectData = await evolutionApi.connectInstance(instanceName!);
         setQrCode(connectData.base64 || connectData.code);
         setStatus('connecting');
 
@@ -307,11 +426,18 @@ const IntegrationConfig: React.FC = () => {
               updated_at: new Date().toISOString()
             }, { onConflict: 'user_id,name' });
         }
+
+        setIsWebhookActive(true);
+        setWebhookUrl(DEFAULT_WEBHOOK_URL);
       }
       toast.success('QR Code gerado!');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to generate QR:', error);
-      toast.error('Erro ao gerar QR Code.');
+      setApiError({
+        title: 'Erro de Conexão',
+        message: 'Falha ao tentar gerar o QR Code ou recriar a instância.',
+        details: error
+      });
     } finally {
       setLoading(false);
     }
@@ -468,25 +594,34 @@ const IntegrationConfig: React.FC = () => {
   }, [checkWebhookStatus]);
 
   const handleRegisterWebhook = async () => {
-    const finalWebhookUrl = 'https://webhook.site/versix-ai-standard-placeholder'; // URL Padrão
     setWebhookLoading(true);
     try {
-      await evolutionApi.setWebhook(instanceName, {
-        url: finalWebhookUrl,
-        enabled: true,
-        webhook_by_events: false,
-        events: [
-          "MESSAGES_UPSERT",
-          "MESSAGES_UPDATE",
-          "MESSAGES_DELETE"
-        ]
-      });
-      setIsWebhookActive(true);
-      await handleSaveSettings(undefined, undefined, finalWebhookUrl); // Save to DB
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Usuário não autenticado.');
+
+      // Fetch token for current instance
+      const { data: instanceData, error: instError } = await supabase
+        .from('instances')
+        .select('token')
+        .eq('user_id', user.id)
+        .eq('name', instanceName)
+        .maybeSingle();
+
+      if (instError || !instanceData?.token) {
+        throw new Error('Não foi possível encontrar o token da instância ativa.');
+      }
+
+      await handleApplyDefaultWebhook(instanceName!, instanceData.token);
+
+      await handleSaveSettings(undefined, undefined, DEFAULT_WEBHOOK_URL); // Save to DB
       toast.success('Webhook padrão registrado!');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to register webhook:', error);
-      toast.error('Erro ao registrar Webhook.');
+      setApiError({
+        title: 'Erro no Registro de Webhook',
+        message: 'Não foi possível registrar o Webhook manualmente.',
+        details: error
+      });
     } finally {
       setWebhookLoading(false);
     }
@@ -510,6 +645,58 @@ const IntegrationConfig: React.FC = () => {
           }
         />
       </div>
+
+      {/* Error Details Modal */}
+      {apiError && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-red-50/50 dark:bg-red-900/10">
+              <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
+                <span className="material-symbols-outlined text-3xl">error</span>
+                <h3 className="text-xl font-bold">{apiError.title}</h3>
+              </div>
+              <button
+                onClick={() => setApiError(null)}
+                className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full text-slate-400 transition-colors"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-slate-600 dark:text-slate-300 mb-6 font-medium">
+                {apiError.message}
+              </p>
+
+              {apiError.details && (
+                <div className="bg-slate-50 dark:bg-slate-950 rounded-xl p-4 border border-slate-200 dark:border-slate-800 overflow-hidden">
+                  <div className="flex items-center gap-2 mb-2 text-slate-400">
+                    <span className="material-symbols-outlined text-sm">code</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider">Resposta da API / Debug</span>
+                  </div>
+                  <pre className="text-[11px] text-slate-500 dark:text-slate-400 overflow-auto max-h-[200px] font-mono leading-relaxed">
+                    {JSON.stringify(apiError.details, null, 2)}
+                  </pre>
+                </div>
+              )}
+
+              <div className="mt-8 flex gap-3">
+                <button
+                  onClick={() => setApiError(null)}
+                  className="flex-1 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold py-3 rounded-xl hover:opacity-90 transition-all active:scale-[0.98]"
+                >
+                  Entendi
+                </button>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="px-6 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-bold py-3 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-all active:scale-[0.98]"
+                >
+                  Recarregar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-8 pt-8 w-full">
 
