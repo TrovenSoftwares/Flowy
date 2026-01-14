@@ -44,7 +44,9 @@ const Settings: React.FC = () => {
   const [isEditingInstance, setIsEditingInstance] = React.useState(false);
   const [isDisconnectModalOpen, setIsDisconnectModalOpen] = React.useState(false);
   const [apiError, setApiError] = React.useState<{ title: string; message: string; details?: any } | null>(null);
-  const [systemVersion, setSystemVersion] = useState({ version: '1.0.2', description: 'Beta' });
+  const [systemVersion, setSystemVersion] = useState({ version: '1.0.3', description: 'Premium' });
+  const [changelogs, setChangelogs] = useState<any[]>([]);
+  const [loadingChangelogs, setLoadingChangelogs] = useState(false);
 
   // Webhook Constants (Same as IntegrationConfig)
   const DEFAULT_WEBHOOK_URL = 'https://workflows.troven.com.br/webhook/financeiro-ai';
@@ -55,6 +57,7 @@ const Settings: React.FC = () => {
 
   useEffect(() => {
     fetchSettings();
+    fetchChangelogs();
   }, []);
 
   const fetchSettings = async () => {
@@ -125,6 +128,43 @@ const Settings: React.FC = () => {
       toast.error('Erro ao carregar configurações.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchChangelogs = async () => {
+    setLoadingChangelogs(true);
+    try {
+      const { data, error } = await supabase
+        .from('system_changelogs')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        if (error.code === 'PGRST116' || error.message.includes('relation "public.system_changelogs" does not exist')) {
+          console.log('Changelogs table not found, using mock data.');
+          const mockData = [
+            { id: 1, version: '1.0.3', type: 'new', title: 'Landing Page Premium', description: 'Lançamento da nova página inicial do Versix AI com design ultra-premium, mockups e foco em IA.' },
+            { id: 2, version: '1.0.3', type: 'improvement', title: 'Headers Fixos', description: 'Os cabeçalhos das telas de Login e Cadastro agora ficam fixos no topo durante a rolagem.' },
+            { id: 3, version: '1.0.2', type: 'improvement', title: 'Padronização Visual', description: 'Unificação de componentes de botão, input e modais em todo o sistema.' },
+            { id: 4, version: '1.0.1', type: 'new', title: 'Revisão Inteligente WhatsApp', description: 'Integração completa com WhatsApp para processamento automático de transações financeiras.' }
+          ];
+          setChangelogs(mockData);
+          if (mockData.length > 0) {
+            setSystemVersion(prev => ({ ...prev, version: mockData[0].version }));
+          }
+        } else {
+          throw error;
+        }
+      } else {
+        setChangelogs(data || []);
+        if (data && data.length > 0) {
+          setSystemVersion(prev => ({ ...prev, version: data[0].version }));
+        }
+      }
+    } catch (error) {
+      console.error('Error loading changelogs:', error);
+    } finally {
+      setLoadingChangelogs(false);
     }
   };
 
@@ -623,24 +663,95 @@ const Settings: React.FC = () => {
             </div>
           )}
 
-          {/* System Info */}
+          {/* System Info & Changelogs */}
           {activeTab === 'sistema' && (
-            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8">
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6">Sobre o Sistema</h3>
-                <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
-                  <div className="w-12 h-12 bg-primary/20 rounded-lg flex items-center justify-center text-primary font-bold text-xl">
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 shadow-sm relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-full -mr-16 -mt-16"></div>
+
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary">info</span>
+                  Sobre o Sistema
+                </h3>
+
+                <div className="flex flex-col md:flex-row md:items-center gap-6 p-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                  <div className="w-16 h-16 bg-gradient-to-br from-primary to-blue-600 rounded-2xl flex items-center justify-center text-white font-black text-3xl shadow-lg shadow-primary/20">
                     V
                   </div>
-                  <div>
-                    <h4 className="font-bold text-slate-900 dark:text-white">Versix AI ERP</h4>
-                    <p className="text-xs text-slate-500">Versão {systemVersion.version} ({systemVersion.description || 'Beta'})</p>
+                  <div className="flex-1">
+                    <h4 className="font-bold text-slate-900 dark:text-white text-xl">Versix AI ERP</h4>
+                    <div className="flex flex-wrap items-center gap-2 mt-1">
+                      <span className="px-2 py-0.5 rounded-lg bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider border border-primary/20">
+                        Versão {systemVersion.version}
+                      </span>
+                      <span className="px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-bold uppercase tracking-wider border border-amber-500/20 text-nowrap">
+                        {systemVersion.description || 'Premium'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 lg:grid-cols-1 gap-4 text-xs">
+                    <div className="text-slate-500">
+                      ID da Instalação: <span className="font-mono bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-slate-700 dark:text-slate-300">8f92-vrsx-9921</span>
+                    </div>
+                    <div className="text-slate-500">
+                      Ambiente: <span className="text-green-600 dark:text-green-400 font-bold">Produção</span>
+                    </div>
                   </div>
                 </div>
-                <div className="mt-6 text-sm text-slate-500 space-y-2">
-                  <p>ID da Instalação: <span className="font-mono bg-slate-100 px-2 py-0.5 rounded">8f92-xxxx-xxxx</span></p>
-                  <p>Ambiente: <span className="text-green-600 font-bold">Produção</span></p>
+              </div>
+
+              {/* Changelog Section */}
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 shadow-sm">
+                <div className="flex items-center justify-between mb-8">
+                  <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <span className="material-symbols-outlined text-primary">history</span>
+                    Histórico de Atualizações
+                  </h3>
+                  <button
+                    onClick={fetchChangelogs}
+                    className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-400"
+                  >
+                    <span className={`material-symbols-outlined text-[20px] ${loadingChangelogs ? 'animate-spin' : ''}`}>refresh</span>
+                  </button>
                 </div>
+
+                {loadingChangelogs ? (
+                  <div className="py-12 flex flex-col items-center justify-center gap-4">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    <p className="text-slate-400 text-sm">Carregando novidades...</p>
+                  </div>
+                ) : (
+                  <div className="space-y-8 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 dark:before:via-slate-800 before:to-transparent">
+                    {changelogs.map((log, index) => (
+                      <div key={log.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group animate-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: `${index * 100}ms` }}>
+                        {/* Dot */}
+                        <div className="flex items-center justify-center w-10 h-10 rounded-full border border-white dark:border-slate-900 bg-slate-100 dark:bg-slate-800 group-hover:bg-primary group-hover:border-primary/20 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 transition-colors duration-500">
+                          <span className={`material-symbols-outlined text-[18px] ${log.type === 'new' ? 'text-green-500' : log.type === 'improvement' ? 'text-blue-500' : 'text-amber-500'} group-hover:text-white`}>
+                            {log.type === 'new' ? 'add_box' : log.type === 'improvement' ? 'trending_up' : 'settings'}
+                          </span>
+                        </div>
+                        {/* Content */}
+                        <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] p-4 rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 group-hover:bg-white dark:group-hover:bg-slate-800 group-hover:shadow-md transition-all duration-500">
+                          <div className="flex items-center justify-between space-x-2 mb-1">
+                            <h4 className="font-bold text-slate-900 dark:text-white">{log.title}</h4>
+                            <time className="font-mono text-[10px] font-bold uppercase text-slate-400">v{log.version}</time>
+                          </div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-tighter ${log.type === 'new' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                              log.type === 'improvement' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                              }`}>
+                              {log.type === 'new' ? 'Novo' : log.type === 'improvement' ? 'Melhoria' : 'Correção'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                            {log.description}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}

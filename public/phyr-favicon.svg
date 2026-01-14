@@ -1,0 +1,11 @@
+<svg class="flame-icon" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <linearGradient id="flameGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+            <stop offset="30%" style="stop-color:#A9EC4A;stop-opacity:1" />
+            <stop offset="70%" style="stop-color:#89BA4F;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#578546;stop-opacity:1" />
+        </linearGradient>
+    </defs>
+    <path fill="url(#flameGradient)" d="M60 10 C45 25, 40 40, 40 55 C40 70, 48 80, 60 90 C72 80, 80 70, 80 55 C80 40, 75 25, 60 10 Z M60 35 C55 42, 52 48, 52 55 C52 62, 55 68, 60 73 C65 68, 68 62, 68 55 C68 48, 65 42, 60 35 Z"/>
+</svg>

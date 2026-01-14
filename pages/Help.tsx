@@ -1,8 +1,9 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { VersixLogo, WhatsAppIcon } from '../components/BrandedIcons';
 
 const Help: React.FC = () => {
+    const navigate = useNavigate();
     const categories = [
         { icon: 'account_balance', title: 'Primeiros Passos', desc: 'Aprenda o básico sobre como configurar sua conta e importar dados.' },
         { icon: 'robot', title: 'Inteligência Artificial', desc: 'Como nossa IA processa seus comprovantes e gera relatórios.' },
@@ -56,6 +57,13 @@ const Help: React.FC = () => {
                             Nossa equipe de suporte está disponível via WhatsApp para resolver qualquer dúvida em tempo real.
                         </p>
                     </div>
+                    <button
+                        onClick={() => navigate('/documentation')}
+                        className="flex items-center gap-3 bg-white text-primary px-8 py-4 rounded-2xl font-bold hover:bg-slate-50 transition-colors shadow-xl"
+                    >
+                        <span className="material-symbols-outlined">description</span>
+                        Ver Documentação Completa
+                    </button>
                     <button className="flex items-center gap-3 bg-white text-primary px-8 py-4 rounded-2xl font-bold hover:bg-slate-50 transition-colors shadow-xl">
                         <WhatsAppIcon className="size-6" />
                         Suporte via WhatsApp

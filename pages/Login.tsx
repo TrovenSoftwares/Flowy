@@ -47,7 +47,7 @@ const Login: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col font-display bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-200">
       {/* Header / Nav */}
-      <header className="flex items-center justify-between whitespace-nowrap px-6 py-4 md:px-10 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-850">
+      <header className="sticky top-0 z-50 flex items-center justify-between whitespace-nowrap px-6 py-4 md:px-10 border-b border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-850/80 backdrop-blur-md">
         <div className="flex items-center">
           <VersixLogo className="h-[40px] w-auto" />
         </div>

@@ -103,6 +103,8 @@ const SidebarContent: React.FC<SidebarContentProps> = ({ locationPath, onItemCli
         <SidebarLink to="/integration" icon="hub" label="Integrações" currentPath={locationPath} onClick={onItemClick} />
       </div>
 
+      <SidebarLink to="/documentation" icon="description" label="Documentação" currentPath={locationPath} onClick={onItemClick} />
+
       <div className="my-2 border-t border-slate-100 dark:border-slate-700" />
 
       <SidebarLink to="/settings" icon="settings" label="Ajustes" currentPath={locationPath} onClick={onItemClick} />

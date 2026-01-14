@@ -37,6 +37,8 @@ import NewBouncedCheck from './pages/NewBouncedCheck';
 import Returns from './pages/Returns';
 import NewReturn from './pages/NewReturn';
 import ReturnReasons from './pages/ReturnReasons';
+import Landing from './pages/Landing';
+import Documentation from './pages/Documentation';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
@@ -88,12 +90,23 @@ const AppContent = () => {
     };
   }, [isMobileMenuOpen]);
 
+  const { user } = useAuth();
   const isAuthPage = location.pathname === '/login' || location.pathname === '/signup';
+
+  if (location.pathname === '/') {
+    return (
+      <Routes>
+        <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Landing />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    );
+  }
+
   if (isAuthPage || location.pathname === '/forgot-password' || location.pathname === '/reset-password' || location.pathname === '/terms' || location.pathname === '/privacy' || location.pathname === '/help') {
     return (
       <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
+        <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
+        <Route path="/signup" element={user ? <Navigate to="/dashboard" replace /> : <Signup />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/terms" element={<TermsOfUse />} />
@@ -154,7 +167,7 @@ const AppContent = () => {
         <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8">
           <div className="max-w-[1400px] mx-auto">
             <Routes>
-              <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/review" element={<ProtectedRoute><Review /></ProtectedRoute>} />
               <Route path="/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />
               <Route path="/integration" element={<ProtectedRoute><Integration /></ProtectedRoute>} />
@@ -188,9 +201,10 @@ const AppContent = () => {
               <Route path="/returns/new" element={<ProtectedRoute><NewReturn /></ProtectedRoute>} />
               <Route path="/returns/edit/:id" element={<ProtectedRoute><NewReturn /></ProtectedRoute>} />
               <Route path="/returns/reasons" element={<ProtectedRoute><ReturnReasons /></ProtectedRoute>} />
+              <Route path="/documentation" element={<ProtectedRoute><Documentation /></ProtectedRoute>} />
 
               {/* Fallback routes */}
-              <Route path="*" element={<Navigate to="/" replace />} />
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </div>
         </main>
