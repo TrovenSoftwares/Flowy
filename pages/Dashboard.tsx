@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { WhatsAppIcon } from '../components/BrandedIcons';
+import StatCard from '../components/StatCard';
 import PageHeader from '../components/PageHeader';
 import { supabase } from '../lib/supabase';
 import { formatDate } from '../utils/utils';
@@ -48,7 +49,7 @@ const Dashboard: React.FC = () => {
       const { data: allTrans, error: transError } = await supabase
         .from('transactions')
         .select(`
-          id, value, type, date, status,
+          id, value, type, date, status, description,
           categories (name, color, icon)
         `)
         .eq('status', 'confirmed') // Only confirmed transactions
@@ -67,13 +68,36 @@ const Dashboard: React.FC = () => {
           return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
         });
       }
-      // For Quarterly and Annual, kpiTrans is already correct (fetched range matches desired KPI range roughly, 
-      // except 'Annual' might need chart to show 12 months? Yes, fetched range is Jan-Dec, so allTrans is correct for KPI).
-      // For Quarterly, fetched range is Q-Start to Q-End. correct.
-      // Wait, for 'monthly', we fetched -5 months. So we MUST filter for KPI. Correct.
 
-      const revenue = kpiTrans.filter(t => t.type === 'income').reduce((acc, t) => acc + Number(t.value), 0);
-      const expenses = kpiTrans.filter(t => t.type === 'expense').reduce((acc, t) => acc + Number(t.value), 0);
+      // Logic Swap: 
+      // Revenue (Receita) = Income (excluding Returns) + Bounced Checks (from Expense)
+      // Expenses (Despesa) = Expenses (excluding Bounced Checks) + Returns (from Income)
+
+      const revenue = kpiTrans.reduce((acc, t) => {
+        // Safe category access
+        const catList: any = t.categories;
+        const catName = Array.isArray(catList) ? catList[0]?.name : catList?.name;
+
+        const isReturn = catName === 'Devolução';
+        const isBouncedCheck = t.description?.includes('Cheque Devolvido');
+
+        if (t.type === 'income' && !isReturn) return acc + Number(t.value);
+        if (t.type === 'expense' && isBouncedCheck) return acc + Number(t.value);
+        return acc;
+      }, 0);
+
+      const expenses = kpiTrans.reduce((acc, t) => {
+        // Safe category access
+        const catList: any = t.categories;
+        const catName = Array.isArray(catList) ? catList[0]?.name : catList?.name;
+
+        const isReturn = catName === 'Devolução';
+        const isBouncedCheck = t.description?.includes('Cheque Devolvido');
+
+        if (t.type === 'expense' && !isBouncedCheck) return acc + Number(t.value);
+        if (t.type === 'income' && isReturn) return acc + Number(t.value);
+        return acc;
+      }, 0);
 
       // Fetch Pending Messages with Monitoring Filter
       const { data: contactsData } = await supabase
@@ -481,18 +505,7 @@ const Dashboard: React.FC = () => {
   );
 };
 
-const StatCard = ({ label, value, trend, icon, iconColor, valueColor, trendColor }: any) => (
-  <div className="flex flex-col gap-1.5 sm:gap-2 rounded-xl p-4 sm:p-6 bg-white dark:bg-slate-850 border border-[#e7edf3] dark:border-slate-800 shadow-sm group hover:border-primary/30 transition-all min-w-0">
-    <div className="flex items-center justify-between">
-      <p className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs font-bold uppercase tracking-wider">{label}</p>
-      <span className={`material-symbols-outlined ${iconColor} p-1.5 sm:p-2 rounded-lg text-lg sm:text-xl shrink-0`}>{icon}</span>
-    </div>
-    <p className={`text-xl sm:text-3xl font-bold tracking-tight truncate whitespace-nowrap ${valueColor || 'text-slate-900 dark:text-white'}`}>{value}</p>
-    <p className={`${trendColor || 'text-emerald-600'} text-[10px] sm:text-xs font-bold flex items-center gap-1.5 mt-0.5 sm:mt-1`}>
-      <span className="material-symbols-outlined text-sm sm:text-base">trending_up</span> {trend}
-    </p>
-  </div>
-);
+
 
 const ChartBar = ({ label, income, expense, highlighted }: any) => (
   <div className="flex flex-col items-center gap-2 flex-1 h-full justify-end group cursor-pointer">

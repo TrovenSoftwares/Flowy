@@ -247,7 +247,7 @@ const NewTransaction: React.FC = () => {
             <div className="md:col-span-7 space-y-2">
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">Valor da Transação</label>
               <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
                   <span className="text-slate-400 font-medium text-lg">R$</span>
                 </div>
                 <InputMask

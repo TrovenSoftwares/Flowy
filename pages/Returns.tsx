@@ -5,6 +5,8 @@ import PageHeader from '../components/PageHeader';
 import CustomSelect from '../components/CustomSelect';
 import ConfirmModal from '../components/ConfirmModal';
 import { toast } from 'react-hot-toast';
+import { WeightIcon } from '../components/BrandedIcons';
+import StatCard from '../components/StatCard';
 
 interface Return {
     id: string;
@@ -135,39 +137,30 @@ const Returns: React.FC = () => {
             <div className="flex-1 w-full max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-850 border border-[#e7edf3] dark:border-slate-800 shadow-sm">
-                        <div className="flex items-center justify-between">
-                            <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">Total de Devoluções</p>
-                            <span className="material-symbols-outlined text-purple-500 bg-purple-500/10 p-2 rounded-lg">assignment_return</span>
-                        </div>
-                        <p className="text-3xl font-bold text-slate-900 dark:text-white">{stats.total}</p>
-                        <p className="text-purple-600 text-xs font-bold flex items-center gap-1.5 mt-1">
-                            <span className="material-symbols-outlined text-base">info</span>
-                            Produtos devolvidos
-                        </p>
-                    </div>
-                    <div className="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-850 border border-[#e7edf3] dark:border-slate-800 shadow-sm">
-                        <div className="flex items-center justify-between">
-                            <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">Peso Total</p>
-                            <span className="material-symbols-outlined text-blue-500 bg-blue-500/10 p-2 rounded-lg">scale</span>
-                        </div>
-                        <p className="text-3xl font-bold text-slate-900 dark:text-white">{formatWeight(stats.totalWeight)}</p>
-                        <p className="text-blue-600 text-xs font-bold flex items-center gap-1.5 mt-1">
-                            <span className="material-symbols-outlined text-base">trending_down</span>
-                            Em gramas
-                        </p>
-                    </div>
-                    <div className="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-850 border border-[#e7edf3] dark:border-slate-800 shadow-sm">
-                        <div className="flex items-center justify-between">
-                            <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wider">Valor Total</p>
-                            <span className="material-symbols-outlined text-amber-500 bg-amber-500/10 p-2 rounded-lg">payments</span>
-                        </div>
-                        <p className="text-3xl font-bold text-slate-900 dark:text-white">{formatCurrency(stats.totalValue)}</p>
-                        <p className="text-amber-600 text-xs font-bold flex items-center gap-1.5 mt-1">
-                            <span className="material-symbols-outlined text-base">trending_up</span>
-                            Débito do cliente
-                        </p>
-                    </div>
+                    <StatCard
+                        label="Total de Devoluções"
+                        value={stats.total.toString()}
+                        trend="Produtos devolvidos"
+                        icon="assignment_return"
+                        iconColor="text-purple-500 bg-purple-500/10"
+                        trendColor="text-purple-600"
+                    />
+                    <StatCard
+                        label="Peso Total"
+                        value={formatWeight(stats.totalWeight)}
+                        trend="Em gramas"
+                        icon={<WeightIcon className="size-6 text-blue-500" />}
+                        iconColor="text-blue-500 bg-blue-500/10"
+                        trendColor="text-blue-600"
+                    />
+                    <StatCard
+                        label="Valor Total"
+                        value={formatCurrency(stats.totalValue)}
+                        trend="Débito do cliente"
+                        icon="payments"
+                        iconColor="text-amber-500 bg-amber-500/10"
+                        trendColor="text-amber-600"
+                    />
                 </div>
 
                 {/* Search & Filters */}

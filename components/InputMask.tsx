@@ -10,6 +10,12 @@ interface InputMaskProps {
     name?: string;
     onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
     unmask?: boolean | 'typed';
+    label?: React.ReactNode;
+    error?: string;
+    helperText?: string;
+    leftIcon?: React.ReactNode;
+    rightIcon?: React.ReactNode;
+    containerClassName?: string;
 }
 
 const InputMask: React.FC<InputMaskProps> = ({
@@ -21,18 +27,61 @@ const InputMask: React.FC<InputMaskProps> = ({
     name,
     onBlur,
     unmask = true,
+    label,
+    error,
+    helperText,
+    leftIcon,
+    rightIcon,
+    containerClassName = ''
 }) => {
     return (
-        <IMaskInput
-            mask={mask}
-            value={value}
-            unmask={unmask}
-            onAccept={onAccept}
-            placeholder={placeholder}
-            className={`w-full rounded-lg border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all placeholder:text-gray-400 dark:text-white ${className}`}
-            name={name}
-            onBlur={onBlur}
-        />
+        <div className={`w-full ${containerClassName}`}>
+            {label && (
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                    {label}
+                </label>
+            )}
+            <div className="relative">
+                {leftIcon && (
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                        {leftIcon}
+                    </div>
+                )}
+                <IMaskInput
+                    mask={mask}
+                    value={value}
+                    unmask={unmask}
+                    onAccept={onAccept}
+                    placeholder={placeholder}
+                    className={`
+                        w-full rounded-lg border bg-white dark:bg-slate-900 
+                        text-slate-900 dark:text-white placeholder-slate-400 
+                        transition-all duration-200 outline-none
+                        disabled:bg-slate-50 dark:disabled:bg-slate-800 disabled:text-slate-500
+                        ${leftIcon ? 'pl-10' : 'px-4'}
+                        ${rightIcon ? 'pr-10' : 'px-4'}
+                        ${error
+                            ? 'border-red-300 focus:border-red-500 focus:ring-1 focus:ring-red-500'
+                            : 'border-slate-200 dark:border-slate-700 focus:border-primary focus:ring-1 focus:ring-primary'
+                        }
+                        py-2.5 text-sm
+                        ${className}
+                    `}
+                    name={name}
+                    onBlur={onBlur}
+                />
+                {rightIcon && (
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400">
+                        {rightIcon}
+                    </div>
+                )}
+            </div>
+            {(error || helperText) && (
+                <p className={`mt-1.5 text-xs ${error ? 'text-red-500 font-medium' : 'text-slate-500'}`}>
+                    {error || helperText}
+                </p>
+            )}
+        </div>
     );
 };
 

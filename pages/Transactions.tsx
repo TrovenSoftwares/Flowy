@@ -4,6 +4,7 @@ import PageHeader from '../components/PageHeader';
 import CustomSelect from '../components/CustomSelect';
 import ConfirmModal from '../components/ConfirmModal';
 import EditTransactionModal from '../components/EditTransactionModal';
+import Modal from '../components/Modal';
 import { supabase } from '../lib/supabase';
 import { formatDate } from '../utils/utils';
 import { toast } from 'react-hot-toast';
@@ -433,43 +434,40 @@ const Transactions: React.FC = () => {
       />
 
       {/* Import Modal */}
-      {importModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Importar Transações</h3>
-              <button onClick={() => setImportModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-            <p className="text-sm text-slate-500">
-              Faça o upload de um arquivo .xlsx com as colunas: <strong>Data, Tipo, Valor, Descricao, Conta, Pago</strong>.
-            </p>
-            <button
-              onClick={() => downloadExampleTemplate('transactions')}
-              className="text-xs text-primary font-bold hover:underline flex items-center gap-1"
-            >
-              <span className="material-symbols-outlined text-sm">download</span>
-              Baixar Planilha de Exemplo
-            </button>
-            <div className="flex flex-col gap-4 pt-2">
-              <input
-                type="file"
-                accept=".xlsx"
-                onChange={handleImportExcel}
-                disabled={importing}
-                className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 file:cursor-pointer cursor-pointer"
-              />
-              {importing && (
-                <div className="flex items-center gap-2 text-sm text-primary font-bold animate-pulse">
-                  <span className="material-symbols-outlined animate-spin">refresh</span>
-                  Importando dados...
-                </div>
-              )}
-            </div>
+      {/* Import Modal */}
+      <Modal
+        isOpen={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        title="Importar Transações"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-500">
+            Faça o upload de um arquivo .xlsx com as colunas: <strong>Data, Tipo, Valor, Descricao, Conta, Pago</strong>.
+          </p>
+          <button
+            onClick={() => downloadExampleTemplate('transactions')}
+            className="text-xs text-primary font-bold hover:underline flex items-center gap-1"
+          >
+            <span className="material-symbols-outlined text-sm">download</span>
+            Baixar Planilha de Exemplo
+          </button>
+          <div className="flex flex-col gap-4 pt-2">
+            <input
+              type="file"
+              accept=".xlsx"
+              onChange={handleImportExcel}
+              disabled={importing}
+              className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 file:cursor-pointer cursor-pointer"
+            />
+            {importing && (
+              <div className="flex items-center gap-2 text-sm text-primary font-bold animate-pulse">
+                <span className="material-symbols-outlined animate-spin">refresh</span>
+                Importando dados...
+              </div>
+            )}
           </div>
         </div>
-      )}
+      </Modal>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

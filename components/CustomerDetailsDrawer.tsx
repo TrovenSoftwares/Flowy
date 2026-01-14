@@ -4,7 +4,7 @@ import { formatDate, formatPhone, formatCpfCnpj } from '../utils/utils';
 import { toast } from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { PdfIcon } from './BrandedIcons';
+import { PdfIcon, WeightIcon } from './BrandedIcons';
 
 interface CustomerDetailsDrawerProps {
     isOpen: boolean;
@@ -173,17 +173,29 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
 
         const tableData = sortedForDisplay.map(item => {
             const value = item.type === 'sale' ? (Number(item.value) + Number(item.shipping || 0)) : Number(item.value);
-            if (item.type === 'sale') {
+
+            // Logic: Sales & Chargebacks = Debit (Clients owe more) -> Add to running balance (Positive Balance = Debt)
+            // Income = Credit (Client pays) -> Subtract from running balance
+
+            let displayValue = fmt(value);
+
+            if (item.type === 'sale' || item.type === 'chargeback') {
                 runningBalance += value;
+                // Sales & Chargebacks: No sign (Positive visual), Red Color implied
+                displayValue = fmt(value);
             } else {
                 runningBalance -= value;
+                // Payments: Negative sign, Green Color implied
+                displayValue = `- ${fmt(value)}`;
             }
+
+            const descriptionMain = item.type === 'sale' ? `Venda #${item.code || '---'}` : item.type === 'chargeback' ? `Cheque Devolvido` : 'Pagamento Recebido';
 
             return [
                 formatDate(item.date),
-                item.type === 'sale' ? `Venda #${item.code || '---'}` : 'Pagamento Recebido',
-                item.type === 'sale' ? 'Venda' : 'Pagamento',
-                fmt(value),
+                descriptionMain,
+                item.type === 'sale' ? 'Venda' : item.type === 'chargeback' ? 'Débito' : 'Pagamento',
+                displayValue,
                 fmt(runningBalance)
             ];
         });
@@ -206,8 +218,7 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                 if (data.section === 'body') {
                     // Column VALOR (Index 3)
                     if (data.column.index === 3) {
-                        // Venda is a debt (+), Payment is a credit (-)
-                        data.cell.styles.textColor = item.type === 'sale' ? [30, 41, 59] : [5, 150, 105];
+                        data.cell.styles.textColor = (item.type === 'sale' || item.type === 'chargeback') ? [185, 28, 28] : [5, 150, 105];
                     }
 
                     // Column SALDO (Index 4)
@@ -216,14 +227,14 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                         for (let i = 0; i <= rowIndex; i++) {
                             const rowItem = sortedForDisplay[i];
                             const val = rowItem.type === 'sale' ? (Number(rowItem.value) + Number(rowItem.shipping || 0)) : Number(rowItem.value);
-                            if (rowItem.type === 'sale') rowBalance += val;
+                            if (rowItem.type === 'sale' || rowItem.type === 'chargeback') rowBalance += val;
                             else rowBalance -= val;
                         }
 
                         if (rowBalance > 0) {
-                            data.cell.styles.textColor = [185, 28, 28]; // Red for Balance > 0 (Devedor)
+                            data.cell.styles.textColor = [185, 28, 28]; // Red
                         } else if (rowBalance < 0) {
-                            data.cell.styles.textColor = [5, 150, 105]; // Green for Balance < 0 (Crédito)
+                            data.cell.styles.textColor = [5, 150, 105]; // Green
                         }
                     }
                 }
@@ -362,15 +373,12 @@ const CustomerDetailsDrawer: React.FC<CustomerDetailsDrawerProps> = ({
                                                     item.type === 'chargeback' ? 'text-rose-600' :
                                                         'text-emerald-600'
                                                     }`}>
-                                                    {item.type === 'sale' ? '' : item.type === 'chargeback' ? '-' : '+'} R$ {(item.type === 'sale' ? (Number(item.value) + Number(item.shipping || 0)) : Number(item.value)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                    {item.type === 'sale' ? '-' : item.type === 'chargeback' ? '-' : '+'} R$ {(item.type === 'sale' ? (Number(item.value) + Number(item.shipping || 0)) : Number(item.value)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                 </p>
                                             </div>
-                                            {item.type === 'chargeback' && (
-                                                <p className="text-[10px] font-bold text-rose-500 uppercase tracking-wider mb-2">+ cheque devolvido</p>
-                                            )}
                                             {item.type === 'sale' && item.weight && (
                                                 <div className="flex items-center gap-2 text-[10px] text-slate-400">
-                                                    <span className="material-symbols-outlined text-[14px]">scale</span>
+                                                    <WeightIcon className="size-3.5" />
                                                     <span>{item.weight}g</span>
                                                 </div>
                                             )}

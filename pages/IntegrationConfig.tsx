@@ -7,6 +7,7 @@ import { toast } from 'react-hot-toast';
 import CustomSelect from '../components/CustomSelect';
 import { supabase } from '../lib/supabase';
 import ConfirmModal from '../components/ConfirmModal';
+import Modal from '../components/Modal';
 import { formatPhoneToJid } from '../utils/utils';
 import Tooltip from '../components/Tooltip';
 
@@ -1081,56 +1082,56 @@ const IntegrationConfig: React.FC = () => {
       />
 
       {/* Instance Name Modal */}
-      {isInstanceModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-200 dark:border-slate-800">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-800">
-              <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary">qr_code_2</span>
-                {isEditingInstance ? 'Editar Nome da Instância' : 'Nomear sua Instância'}
-              </h3>
-              <p className="text-sm text-slate-500 mt-1">
-                Escolha um nome simples para identificar seu WhatsApp (ex: 'empresa-vendas').
-              </p>
-            </div>
-            <div className="p-6 space-y-4">
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Nome da Instância</label>
-                <input
-                  type="text"
-                  autoFocus
-                  value={newInstanceName}
-                  onChange={(e) => setNewInstanceName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                  placeholder="ex: minha-loja"
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all font-medium"
-                />
-                <p className="text-[10px] text-slate-400 ml-1 italic">Apenas letras minúsculas, números e traços são permitidos.</p>
-              </div>
-            </div>
-            <div className="p-6 bg-slate-50 dark:bg-slate-800/50 flex gap-3">
-              <button
-                onClick={() => {
-                  setIsInstanceModalOpen(false);
-                  setNewInstanceName('');
-                  setIsEditingInstance(false);
-                }}
-                className="flex-1 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-bold hover:bg-white dark:hover:bg-slate-800 transition-colors"
-                disabled={loading}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleSaveInstanceName}
-                className="flex-1 px-4 py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
-                disabled={loading || !newInstanceName}
-              >
-                {loading && <span className="material-symbols-outlined animate-spin text-[20px]">sync</span>}
-                {isEditingInstance ? 'Salvar' : 'Configurar'}
-              </button>
-            </div>
+      <Modal
+        isOpen={isInstanceModalOpen}
+        onClose={() => {
+          setIsInstanceModalOpen(false);
+          setNewInstanceName('');
+          setIsEditingInstance(false);
+        }}
+        title={isEditingInstance ? 'Editar Nome da Instância' : 'Nomear sua Instância'}
+        footer={
+          <>
+            <button
+              onClick={() => {
+                setIsInstanceModalOpen(false);
+                setNewInstanceName('');
+                setIsEditingInstance(false);
+              }}
+              className="px-4 py-2 rounded-lg text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+              disabled={loading}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleSaveInstanceName}
+              className="px-6 py-2 rounded-lg text-sm font-bold text-white bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2"
+              disabled={loading || !newInstanceName}
+            >
+              {loading && <span className="material-symbols-outlined animate-spin text-[18px]">sync</span>}
+              {isEditingInstance ? 'Salvar' : 'Configurar'}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-500">
+            Escolha um nome simples para identificar seu WhatsApp (ex: 'empresa-vendas').
+          </p>
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Nome da Instância</label>
+            <input
+              type="text"
+              autoFocus
+              value={newInstanceName}
+              onChange={(e) => setNewInstanceName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+              placeholder="ex: minha-loja"
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all font-medium"
+            />
+            <p className="text-[10px] text-slate-400 ml-1 italic">Apenas letras minúsculas, números e traços são permitidos.</p>
           </div>
         </div>
-      )}
+      </Modal>
 
       {/* Messages History Tray */}
       {isMessagesTrayOpen && selectedContact && (

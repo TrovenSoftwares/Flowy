@@ -6,6 +6,9 @@ import { MASKS, formatCpfCnpj } from '../utils/utils';
 import { toast } from 'react-hot-toast';
 import PageHeader from '../components/PageHeader';
 import CustomSelect from '../components/CustomSelect';
+import { WeightIcon } from '../components/BrandedIcons';
+import Button from '../components/Button';
+import Input from '../components/Input';
 
 const NewSale: React.FC = () => {
   const navigate = useNavigate();
@@ -188,14 +191,13 @@ const NewSale: React.FC = () => {
             title={isEdit ? 'Editar Venda' : 'Adicionar Venda Manual'}
             description={isEdit ? 'Atualize os dados da venda abaixo.' : 'Preencha os dados abaixo para registrar uma nova venda manualmente.'}
             actions={
-              <button
-                type="button"
+              <Button
+                variant="outline"
                 onClick={() => navigate('/sales')}
-                className="flex items-center justify-center gap-2 h-10 px-4 bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm font-bold rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm active:scale-95 transition-all"
+                leftIcon={<span className="material-symbols-outlined text-[20px]">arrow_back</span>}
               >
-                <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-                <span>Voltar</span>
-              </button>
+                Voltar
+              </Button>
             }
           />
         </div>
@@ -253,81 +255,55 @@ const NewSale: React.FC = () => {
               {/* Form Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Sale Date */}
-                <div className="flex flex-col gap-2">
-                  <label className="text-slate-900 dark:text-white text-sm font-medium flex gap-1">
-                    Data da Venda <span className="text-red-500">*</span>
-                  </label>
-                  <div className="flex items-center bg-[#f1f5f9] dark:bg-slate-900 rounded-lg h-12 px-4 focus-within:ring-2 focus-within:ring-primary/30 focus-within:bg-white dark:focus-within:bg-slate-950 transition-all border border-transparent">
-                    <input
-                      className="bg-transparent border-none w-full text-slate-900 dark:text-white font-medium text-base focus:ring-0 p-0"
-                      type="date"
-                      required
-                      value={formData.date}
-                      onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    />
-                  </div>
-                </div>
+                <Input
+                  label={<>Data da Venda <span className="text-red-500">*</span></>}
+                  type="date"
+                  required
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                />
 
                 {/* Internal Code */}
-                <div className="flex flex-col gap-2">
-                  <label className="text-slate-900 dark:text-white text-sm font-medium">Código Interno</label>
-                  <div className="flex items-center bg-[#f1f5f9] dark:bg-slate-900 rounded-lg h-12 px-4 focus-within:ring-2 focus-within:ring-primary/30 border border-transparent">
-                    <span className="material-symbols-outlined text-slate-400 mr-2">tag</span>
-                    <input
-                      className="bg-transparent border-none w-full text-slate-900 dark:text-white font-medium text-base focus:ring-0 p-0"
-                      placeholder="Geração automática se vazio"
-                      type="text"
-                      value={formData.code}
-                      onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                    />
-                  </div>
-                </div>
+                <Input
+                  label="Código Interno"
+                  placeholder="Geração automática se vazio"
+                  value={formData.code}
+                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                  leftIcon={<span className="material-symbols-outlined text-slate-400 text-[20px]">tag</span>}
+                />
 
-                <div className="flex flex-col gap-2">
-                  <label className="text-slate-900 dark:text-white text-sm font-medium">Valor Total (R$) <span className="text-red-500">*</span></label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold z-10">R$</span>
-                    <InputMask
-                      mask={MASKS.CURRENCY}
-                      value={formData.value}
-                      onAccept={(val) => setFormData({ ...formData, value: val })}
-                      placeholder="0,00"
-                      className="pl-12 font-bold text-lg"
-                    />
-                  </div>
-                </div>
+                <InputMask
+                  label={<>Valor Total (R$) <span className="text-red-500">*</span></>}
+                  mask={MASKS.CURRENCY}
+                  value={formData.value}
+                  onAccept={(val) => setFormData({ ...formData, value: val })}
+                  placeholder="0,00"
+                  leftIcon={<span className="text-slate-400 font-bold">R$</span>}
+                  className="font-bold text-lg"
+                />
 
                 {/* Weight */}
-                <div className="flex flex-col gap-2">
-                  <label className="text-slate-900 dark:text-white text-sm font-medium">Peso (g)</label>
-                  <div className="flex items-center bg-[#f1f5f9] dark:bg-slate-900 rounded-lg h-12 px-4 focus-within:ring-2 focus-within:ring-primary/30 focus-within:bg-white dark:focus-within:bg-slate-950 transition-all border border-transparent">
-                    <span className="material-symbols-outlined text-slate-400 mr-2">scale</span>
-                    <input
-                      className="bg-transparent border-none w-full text-slate-900 dark:text-white font-bold text-lg focus:ring-0 p-0"
-                      placeholder="0"
-                      type="number"
-                      value={formData.weight}
-                      onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
-                    />
-                    <span className="text-slate-400 font-bold ml-2">gramas</span>
-                  </div>
-                </div>
+                <Input
+                  label="Peso (g)"
+                  type="number"
+                  placeholder="0"
+                  value={formData.weight}
+                  onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
+                  leftIcon={<WeightIcon className="size-5 text-slate-400" />}
+                  rightIcon={<span className="text-slate-400 font-bold text-xs">gramas</span>}
+                />
 
                 {/* Shipping */}
-                <div className="flex flex-col gap-2">
-                  <label className="text-slate-900 dark:text-white text-sm font-medium">Frete (R$)</label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold z-10">R$</span>
-                    <InputMask
-                      mask={MASKS.CURRENCY}
-                      value={formData.shipping}
-                      onAccept={(val) => setFormData({ ...formData, shipping: val })}
-                      placeholder="0,00"
-                      className="pl-12 font-bold text-lg"
-                    />
-                    <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm">local_shipping</span>
-                  </div>
-                </div>
+                <InputMask
+                  label="Frete (R$)"
+                  mask={MASKS.CURRENCY}
+                  value={formData.shipping}
+                  onAccept={(val) => setFormData({ ...formData, shipping: val })}
+                  placeholder="0,00"
+                  leftIcon={<span className="text-slate-400 font-bold">R$</span>}
+                  rightIcon={<span className="material-symbols-outlined text-slate-400 text-sm">local_shipping</span>}
+                  className="font-bold text-lg"
+                />
 
                 {/* Seller Selection - Hidden for new manual sales as requested */}
                 {isEdit && (
@@ -349,27 +325,22 @@ const NewSale: React.FC = () => {
 
               {/* Form Footer Actions */}
               <div className="mt-auto pt-6 border-t border-slate-100 dark:border-slate-800 flex flex-col md:flex-row gap-4 justify-end items-center">
-                <button
+                <Button
                   type="button"
+                  variant="secondary"
+                  size="lg"
                   onClick={() => navigate('/sales')}
-                  className="h-12 px-6 rounded-lg border border-[#e7edf3] dark:border-slate-700 text-slate-500 dark:text-slate-300 font-bold bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
                 >
                   Cancelar
-                </button>
-                <button
+                </Button>
+                <Button
                   type="submit"
-                  disabled={loading}
-                  className="h-12 px-8 rounded-lg bg-primary hover:bg-primary/90 text-white font-bold shadow-lg shadow-primary/20 dark:shadow-none transition-all flex items-center justify-center gap-2 group active:scale-95 disabled:opacity-50"
+                  size="lg"
+                  isLoading={loading}
+                  leftIcon={<span className="material-symbols-outlined group-hover:scale-110 transition-transform">save</span>}
                 >
-                  {loading ? (
-                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                  ) : (
-                    <>
-                      <span className="material-symbols-outlined group-hover:scale-110 transition-transform">save</span>
-                      {isEdit ? 'Salvar Alterações' : 'Cadastrar Venda'}
-                    </>
-                  )}
-                </button>
+                  {isEdit ? 'Salvar Alterações' : 'Cadastrar Venda'}
+                </Button>
               </div>
             </div>
           </div>

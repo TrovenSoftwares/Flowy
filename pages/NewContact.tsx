@@ -5,6 +5,8 @@ import InputMask from '../components/InputMask';
 import { MASKS, fetchCompanyData } from '../utils/utils';
 import { toast } from 'react-hot-toast';
 import PageHeader from '../components/PageHeader';
+import Button from '../components/Button';
+import Input from '../components/Input';
 
 const NewContact: React.FC = () => {
   const navigate = useNavigate();
@@ -129,14 +131,13 @@ const NewContact: React.FC = () => {
             title={isEdit ? 'Editar Contato' : 'Novo Contato'}
             description={isEdit ? 'Atualize os dados cadastrais do cliente ou fornecedor abaixo.' : 'Adicione um novo cliente ou fornecedor à sua base.'}
             actions={
-              <button
-                type="button"
+              <Button
+                variant="outline"
                 onClick={() => navigate(-1)}
-                className="flex items-center justify-center gap-2 h-10 px-4 bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white text-sm font-bold rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm active:scale-95 transition-all"
+                leftIcon={<span className="material-symbols-outlined text-[20px]">arrow_back</span>}
               >
-                <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-                <span>Voltar</span>
-              </button>
+                Voltar
+              </Button>
             }
           />
         </div>
@@ -155,24 +156,18 @@ const NewContact: React.FC = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1.5">Nome / Razão Social</label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <span className="material-symbols-outlined text-slate-400 text-[20px]">person</span>
-                    </div>
-                    <input
-                      className="w-full pl-10 rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 dark:text-white focus:ring-primary focus:border-primary text-sm py-2.5 outline-none transition-all"
-                      placeholder="Ex: João Silva ou Empresa LTDA"
-                      type="text"
-                      required
-                      value={formData.name}
-                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    />
-                  </div>
+                  <Input
+                    label="Nome / Razão Social"
+                    placeholder="Ex: João Silva ou Empresa LTDA"
+                    required
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    leftIcon={<span className="material-symbols-outlined text-slate-400 text-[20px]">person</span>}
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1.5">CPF / CNPJ</label>
                   <InputMask
+                    label="CPF / CNPJ"
                     mask={[
                       { mask: MASKS.CPF },
                       { mask: MASKS.CNPJ }
@@ -193,60 +188,45 @@ const NewContact: React.FC = () => {
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1.5">E-mail</label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <span className="material-symbols-outlined text-slate-400 text-[18px]">mail</span>
-                    </div>
-                    <input
-                      className="w-full pl-10 rounded-lg border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 dark:text-white focus:ring-primary focus:border-primary text-sm py-2.5 outline-none"
-                      placeholder="email@exemplo.com"
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    />
-                  </div>
+                  <Input
+                    label="E-mail"
+                    placeholder="email@exemplo.com"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    leftIcon={<span className="material-symbols-outlined text-slate-400 text-[18px]">mail</span>}
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-500 dark:text-slate-400 mb-1.5">Telefone / WhatsApp</label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
-                      <span className="material-symbols-outlined text-slate-400 text-[18px]">call</span>
-                    </div>
-                    <InputMask
-                      mask={MASKS.PHONE}
-                      value={formData.phone}
-                      onAccept={(val) => setFormData({ ...formData, phone: val })}
-                      placeholder="(00) 00000-0000"
-                      className="pl-10"
-                    />
-                  </div>
+                  <InputMask
+                    label="Telefone / WhatsApp"
+                    mask={MASKS.PHONE}
+                    value={formData.phone}
+                    onAccept={(val) => setFormData({ ...formData, phone: val })}
+                    placeholder="(00) 00000-0000"
+                    leftIcon={<span className="material-symbols-outlined text-slate-400 text-[18px]">call</span>}
+                    className="pl-10"
+                  />
                 </div>
               </div>
             </div>
 
             <div className="flex flex-col-reverse md:flex-row justify-end gap-4 mt-2">
-              <button
+              <Button
+                variant="outline"
+                size="lg"
                 onClick={() => navigate(-1)}
-                className="px-6 py-3 rounded-xl border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-                type="button"
               >
                 Cancelar
-              </button>
-              <button
-                disabled={loading}
-                className="px-8 py-3 rounded-xl bg-primary text-white font-bold shadow-lg shadow-blue-500/30 hover:bg-primary/90 transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
+              </Button>
+              <Button
                 type="submit"
+                size="lg"
+                isLoading={loading}
+                leftIcon={<span className="material-symbols-outlined">save</span>}
               >
-                {loading ? (
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                ) : (
-                  <>
-                    <span className="material-symbols-outlined">save</span>
-                    {isEdit ? 'Salvar Alterações' : 'Salvar Contato'}
-                  </>
-                )}
-              </button>
+                {isEdit ? 'Salvar Alterações' : 'Salvar Contato'}
+              </Button>
             </div>
           </form>
         </div>

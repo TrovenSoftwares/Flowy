@@ -1,5 +1,6 @@
 import React from 'react';
 import Modal from './Modal';
+import Button from './Button';
 
 interface ConfirmModalProps {
     isOpen: boolean;
@@ -22,11 +23,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
     cancelLabel = 'Cancelar',
     type = 'info'
 }) => {
-    const confirmButtonClass = type === 'danger'
-        ? 'bg-red-500 hover:bg-red-600 shadow-red-200'
-        : type === 'warning'
-            ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-200'
-            : 'bg-primary hover:bg-primary/90 shadow-primary/20';
+    // confirmButtonClass logic removed as Button component handles variants now
 
     return (
         <Modal
@@ -35,21 +32,21 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
             title={title}
             footer={
                 <>
-                    <button
+                    <Button
+                        variant="ghost"
                         onClick={onClose}
-                        className="px-4 py-2 text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
                     >
                         {cancelLabel}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                        variant={type === 'info' ? 'primary' : type}
                         onClick={() => {
                             onConfirm();
                             onClose();
                         }}
-                        className={`px-6 py-2 rounded-lg text-sm font-bold text-white transition-all shadow-lg active:scale-95 ${confirmButtonClass}`}
                     >
                         {confirmLabel}
-                    </button>
+                    </Button>
                 </>
             }
         >

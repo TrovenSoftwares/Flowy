@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
 
 import ConfirmModal from '../components/ConfirmModal';
+import Modal from '../components/Modal';
 
 const Wallet: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -446,247 +447,238 @@ const Wallet: React.FC = () => {
       </div>
 
       {/* --- MODALS --- */}
-
       {/* Account Modal */}
-      {isAccountModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
-              <h3 className="font-bold text-lg text-slate-900 dark:text-white">Nova Conta</h3>
-              <button onClick={() => setIsAccountModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-white">
-                <span className="material-symbols-outlined">close</span>
-              </button>
+      <Modal
+        isOpen={isAccountModalOpen}
+        onClose={() => setIsAccountModalOpen(false)}
+        title="Nova Conta"
+        footer={
+          <>
+            <button onClick={() => setIsAccountModalOpen(false)} className="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-700 transition-colors">Cancelar</button>
+            <button
+              onClick={handleSaveAccount}
+              disabled={submitting}
+              className="px-6 py-2 bg-primary hover:bg-primary/90 text-white text-sm font-bold rounded-lg shadow-sm transition-all active:scale-95 disabled:opacity-50"
+            >
+              {submitting ? 'Salvando...' : (editingAccountId ? 'Atualizar Conta' : 'Criar Conta')}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Nome da Conta</label>
+            <input
+              type="text"
+              className="w-full h-11 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+              placeholder="Ex: Nubank Principal"
+              value={newAccount.name}
+              onChange={e => setNewAccount({ ...newAccount, name: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Tipo</label>
+            <select
+              className="w-full h-11 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+              value={newAccount.type}
+              onChange={e => setNewAccount({ ...newAccount, type: e.target.value })}
+            >
+              <option>Conta Corrente</option>
+              <option>Conta Poupança</option>
+              <option>Cartão de Crédito</option>
+              <option>Investimento</option>
+              <option>Dinheiro (Caixa)</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Saldo Inicial</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold">R$</span>
+              <input
+                type="text"
+                className="w-full h-11 pl-10 pr-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                placeholder="0,00"
+                value={newAccount.balance}
+                onChange={e => setNewAccount({ ...newAccount, balance: e.target.value })}
+              />
             </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Nome da Conta</label>
-                <input
-                  type="text"
-                  className="w-full h-11 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                  placeholder="Ex: Nubank Principal"
-                  value={newAccount.name}
-                  onChange={e => setNewAccount({ ...newAccount, name: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Tipo</label>
-                <select
-                  className="w-full h-11 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                  value={newAccount.type}
-                  onChange={e => setNewAccount({ ...newAccount, type: e.target.value })}
-                >
-                  <option>Conta Corrente</option>
-                  <option>Conta Poupança</option>
-                  <option>Cartão de Crédito</option>
-                  <option>Investimento</option>
-                  <option>Dinheiro (Caixa)</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Saldo Inicial</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold">R$</span>
-                  <input
-                    type="text"
-                    className="w-full h-11 pl-10 pr-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                    placeholder="0,00"
-                    value={newAccount.balance}
-                    onChange={e => setNewAccount({ ...newAccount, balance: e.target.value })}
-                  />
-                </div>
-                <p className="text-[10px] text-slate-400 mt-1 ml-1">Comece com 0,00 se for uma conta nova.</p>
-              </div>
+            <p className="text-[10px] text-slate-400 mt-1 ml-1">Comece com 0,00 se for uma conta nova.</p>
+          </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-3">Escolha o Banco</label>
-                <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 border border-slate-100 dark:border-slate-700 p-3 rounded-xl bg-slate-50/50 dark:bg-slate-850">
-                  {[
-                    { name: 'Nubank', color: 'bg-[#8A05BE]', logo: '/img/banks/nubank.svg' },
-                    { name: 'Itaú', color: 'bg-[#EC7000]', logo: '/img/banks/itau.svg' },
-                    { name: 'Bradesco', color: 'bg-[#CC092F]', logo: '/img/banks/bradesco.svg' },
-                    { name: 'BB', color: 'bg-[#F7D116]', logo: '/img/banks/banco-do-brasil.svg' },
-                    { name: 'Inter', color: 'bg-[#FF7A00]', logo: '/img/banks/inter.svg' },
-                    { name: 'Santander', color: 'bg-[#EC0000]', logo: '/img/banks/santander.svg' },
-                    { name: 'Caixa', color: 'bg-[#005CA9]', logo: '/img/banks/caixa.svg' },
-                    { name: 'C6 Bank', color: 'bg-black', logo: '/img/banks/c6.svg' },
-                    { name: 'Cora', color: 'bg-[#FE3D2D]', logo: '/img/banks/cora.svg' },
-                    { name: 'Mercado Pago', color: 'bg-[#00B1EA]', logo: '/img/banks/mercado-pago.svg' },
-                    { name: 'PagBank', color: 'bg-[#00C250]', logo: '/img/banks/pagbank.svg' },
-                    { name: 'InfinityPay', color: 'bg-[#3C28ED]', logo: '/img/banks/infinitypay.svg' },
-                    { name: 'Outros', color: 'bg-slate-500', logo: '/img/banks/outro.svg' },
-                  ].map(bank => (
-                    <button
-                      key={bank.name}
-                      type="button"
-                      onClick={() => setNewAccount({ ...newAccount, color: bank.color, icon: bank.logo })}
-                      className={`relative size-10 flex items-center justify-center rounded-xl transition-all duration-200 ${newAccount.icon === bank.logo ? 'ring-2 ring-primary ring-offset-2 dark:ring-offset-slate-900 scale-110 shadow-lg shadow-primary/30' : 'opacity-60 hover:opacity-100 hover:scale-105'}`}
-                      title={bank.name}
-                    >
-                      <div className={`size-full rounded-xl ${bank.color} flex items-center justify-center overflow-hidden`}>
-                        <img
-                          src={bank.logo}
-                          alt={bank.name}
-                          className="size-full object-cover"
-                          onError={(e) => {
-                            (e.target as any).style.display = 'none';
-                            (e.target as any).parentElement.innerHTML = `<span class="material-symbols-outlined text-[18px]">account_balance</span>`;
-                          }}
-                        />
-                      </div>
-                      {newAccount.icon === bank.logo && (
-                        <div className="absolute -bottom-1 -right-1 size-5 bg-gradient-to-br from-primary to-primary/80 rounded-full flex items-center justify-center border-2 border-white dark:border-slate-900 shadow-md">
-                          <span className="material-symbols-outlined text-white text-[12px] font-bold">check</span>
-                        </div>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="p-6 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3">
-              <button onClick={() => setIsAccountModalOpen(false)} className="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-700 transition-colors">Cancelar</button>
-              <button
-                onClick={handleSaveAccount}
-                disabled={submitting}
-                className="px-6 py-2 bg-primary hover:bg-primary/90 text-white text-sm font-bold rounded-lg shadow-sm transition-all active:scale-95 disabled:opacity-50"
-              >
-                {submitting ? 'Salvando...' : (editingAccountId ? 'Atualizar Conta' : 'Criar Conta')}
-              </button>
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase mb-3">Escolha o Banco</label>
+            <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 border border-slate-100 dark:border-slate-700 p-3 rounded-xl bg-slate-50/50 dark:bg-slate-850">
+              {[
+                { name: 'Nubank', color: 'bg-[#8A05BE]', logo: '/img/banks/nubank.svg' },
+                { name: 'Itaú', color: 'bg-[#EC7000]', logo: '/img/banks/itau.svg' },
+                { name: 'Bradesco', color: 'bg-[#CC092F]', logo: '/img/banks/bradesco.svg' },
+                { name: 'BB', color: 'bg-[#F7D116]', logo: '/img/banks/banco-do-brasil.svg' },
+                { name: 'Inter', color: 'bg-[#FF7A00]', logo: '/img/banks/inter.svg' },
+                { name: 'Santander', color: 'bg-[#EC0000]', logo: '/img/banks/santander.svg' },
+                { name: 'Caixa', color: 'bg-[#005CA9]', logo: '/img/banks/caixa.svg' },
+                { name: 'C6 Bank', color: 'bg-black', logo: '/img/banks/c6.svg' },
+                { name: 'Cora', color: 'bg-[#FE3D2D]', logo: '/img/banks/cora.svg' },
+                { name: 'Mercado Pago', color: 'bg-[#00B1EA]', logo: '/img/banks/mercado-pago.svg' },
+                { name: 'PagBank', color: 'bg-[#00C250]', logo: '/img/banks/pagbank.svg' },
+                { name: 'InfinityPay', color: 'bg-[#3C28ED]', logo: '/img/banks/infinitypay.svg' },
+                { name: 'Outros', color: 'bg-slate-500', logo: '/img/banks/outro.svg' },
+              ].map(bank => (
+                <button
+                  key={bank.name}
+                  type="button"
+                  onClick={() => setNewAccount({ ...newAccount, color: bank.color, icon: bank.logo })}
+                  className={`relative size-10 flex items-center justify-center rounded-xl transition-all duration-200 ${newAccount.icon === bank.logo ? 'ring-2 ring-primary ring-offset-2 dark:ring-offset-slate-900 scale-110 shadow-lg shadow-primary/30' : 'opacity-60 hover:opacity-100 hover:scale-105'}`}
+                  title={bank.name}
+                >
+                  <div className={`size-full rounded-xl ${bank.color} flex items-center justify-center overflow-hidden`}>
+                    <img
+                      src={bank.logo}
+                      alt={bank.name}
+                      className="size-full object-cover"
+                      onError={(e) => {
+                        (e.target as any).style.display = 'none';
+                        (e.target as any).parentElement.innerHTML = `<span class="material-symbols-outlined text-[18px]">account_balance</span>`;
+                      }}
+                    />
+                  </div>
+                  {newAccount.icon === bank.logo && (
+                    <div className="absolute -bottom-1 -right-1 size-5 bg-gradient-to-br from-primary to-primary/80 rounded-full flex items-center justify-center border-2 border-white dark:border-slate-900 shadow-md">
+                      <span className="material-symbols-outlined text-white text-[12px] font-bold">check</span>
+                    </div>
+                  )}
+                </button>
+              ))}
             </div>
           </div>
         </div>
-      )}
+      </Modal>
 
       {/* Category Modal */}
-      {isCategoryModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-800/50">
-              <h3 className="font-bold text-lg text-slate-900 dark:text-white">{editingCategoryId ? 'Editar Categoria' : 'Nova Categoria'}</h3>
-              <button onClick={() => setIsCategoryModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-white">
-                <span className="material-symbols-outlined">close</span>
-              </button>
+      <Modal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        title={editingCategoryId ? 'Editar Categoria' : 'Nova Categoria'}
+        footer={
+          <>
+            <button onClick={() => setIsCategoryModalOpen(false)} className="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-700 transition-colors">Cancelar</button>
+            <button
+              onClick={handleSaveCategory}
+              disabled={submitting}
+              className="px-6 py-2 bg-primary hover:bg-primary/90 text-white text-sm font-bold rounded-lg shadow-sm transition-all active:scale-95 disabled:opacity-50"
+            >
+              {submitting ? 'Salvando...' : (editingCategoryId ? 'Atualizar Categoria' : 'Criar Categoria')}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Nome</label>
+            <input
+              type="text"
+              className="w-full h-11 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+              placeholder="Ex: Alimentação, Transporte"
+              value={newCategory.name}
+              onChange={e => setNewCategory({ ...newCategory, name: e.target.value })}
+            />
+          </div>
+          <div className="flex items-center justify-between">
+            <label className="block text-xs font-bold text-slate-500 uppercase">Orçamento Mensal (Meta)</label>
+            <div className="flex items-center gap-2 cursor-pointer" onClick={() => setNewCategory({ ...newCategory, budget_is_unlimited: !newCategory.budget_is_unlimited })}>
+              <div className={`w-8 h-4 rounded-full transition-colors relative ${newCategory.budget_is_unlimited ? 'bg-primary' : 'bg-slate-300'}`}>
+                <div className={`absolute top-0.5 size-3 bg-white rounded-full transition-all ${newCategory.budget_is_unlimited ? 'translate-x-4' : 'translate-x-0'} left-0.5`}></div>
+              </div>
+              <span className="text-xs font-bold text-slate-600">Sem limite</span>
             </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Nome</label>
-                <input
-                  type="text"
-                  className="w-full h-11 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
-                  placeholder="Ex: Alimentação, Transporte"
-                  value={newCategory.name}
-                  onChange={e => setNewCategory({ ...newCategory, name: e.target.value })}
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <label className="block text-xs font-bold text-slate-500 uppercase">Orçamento Mensal (Meta)</label>
-                <div className="flex items-center gap-2 cursor-pointer" onClick={() => setNewCategory({ ...newCategory, budget_is_unlimited: !newCategory.budget_is_unlimited })}>
-                  <div className={`w-8 h-4 rounded-full transition-colors relative ${newCategory.budget_is_unlimited ? 'bg-primary' : 'bg-slate-300'}`}>
-                    <div className={`absolute top-0.5 size-3 bg-white rounded-full transition-all ${newCategory.budget_is_unlimited ? 'translate-x-4' : 'translate-x-0'} left-0.5`}></div>
-                  </div>
-                  <span className="text-xs font-bold text-slate-600">Sem limite</span>
-                </div>
-              </div>
-              <div className="relative">
-                {!newCategory.budget_is_unlimited && (
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold">R$</span>
+          </div>
+          <div className="relative">
+            {!newCategory.budget_is_unlimited && (
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold">R$</span>
+            )}
+            <input
+              type="text"
+              disabled={newCategory.budget_is_unlimited}
+              className={`w-full h-11 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none ${newCategory.budget_is_unlimited ? 'bg-slate-50 dark:bg-slate-850 text-slate-400 pl-3 italic' : 'pl-10 pr-3'}`}
+              placeholder={newCategory.budget_is_unlimited ? "Lançamentos ilimitados para esta categoria" : "0,00"}
+              value={newCategory.budget_is_unlimited ? '' : newCategory.budget}
+              onChange={e => setNewCategory({ ...newCategory, budget: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Categoria Pai (Hierarquia)</label>
+            <select
+              className="w-full h-11 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium outline-none"
+              value={newCategory.parent_id}
+              onChange={e => {
+                const pid = e.target.value;
+                const parent = categories.find(c => c.id === pid);
+                setNewCategory({
+                  ...newCategory,
+                  parent_id: pid,
+                  icon: parent ? parent.icon : newCategory.icon,
+                  color: parent ? parent.color : newCategory.color
+                });
+              }}
+            >
+              <option value="">Nenhuma (Categoria Principal)</option>
+              {categories.filter(c => c.id !== editingCategoryId).map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+            <p className="text-[10px] text-slate-400 mt-1 ml-1">Selecione se deseja que esta seja uma subcategoria.</p>
+          </div>
+          <div className="space-y-4">
+            <div className={newCategory.parent_id ? 'opacity-50 pointer-events-none' : ''}>
+              <div className="flex items-center justify-between mb-3">
+                <label className="block text-xs font-bold text-slate-500 uppercase">Escolha um Ícone</label>
+                {newCategory.parent_id && (
+                  <span className="text-[10px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded">Herdado do pai</span>
                 )}
-                <input
-                  type="text"
-                  disabled={newCategory.budget_is_unlimited}
-                  className={`w-full h-11 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none ${newCategory.budget_is_unlimited ? 'bg-slate-50 dark:bg-slate-850 text-slate-400 pl-3 italic' : 'pl-10 pr-3'}`}
-                  placeholder={newCategory.budget_is_unlimited ? "Lançamentos ilimitados para esta categoria" : "0,00"}
-                  value={newCategory.budget_is_unlimited ? '' : newCategory.budget}
-                  onChange={e => setNewCategory({ ...newCategory, budget: e.target.value })}
-                />
               </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Categoria Pai (Hierarquia)</label>
-                <select
-                  className="w-full h-11 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium outline-none"
-                  value={newCategory.parent_id}
-                  onChange={e => {
-                    const pid = e.target.value;
-                    const parent = categories.find(c => c.id === pid);
-                    setNewCategory({
-                      ...newCategory,
-                      parent_id: pid,
-                      icon: parent ? parent.icon : newCategory.icon,
-                      color: parent ? parent.color : newCategory.color
-                    });
-                  }}
-                >
-                  <option value="">Nenhuma (Categoria Principal)</option>
-                  {categories.filter(c => c.id !== editingCategoryId).map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-                <p className="text-[10px] text-slate-400 mt-1 ml-1">Selecione se deseja que esta seja uma subcategoria.</p>
-              </div>
-              <div className="space-y-4">
-                <div className={newCategory.parent_id ? 'opacity-50 pointer-events-none' : ''}>
-                  <div className="flex items-center justify-between mb-3">
-                    <label className="block text-xs font-bold text-slate-500 uppercase">Escolha um Ícone</label>
-                    {newCategory.parent_id && (
-                      <span className="text-[10px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded">Herdado do pai</span>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-5 sm:grid-cols-10 gap-2 border border-slate-100 dark:border-slate-700 p-3 rounded-xl bg-slate-50/50 dark:bg-slate-850">
-                    {[
-                      'shopping_bag', 'shopping_cart', 'restaurant', 'directions_car', 'home',
-                      'payments', 'health_and_safety', 'fitness_center', 'school', 'build',
-                      'pets', 'flight', 'store', 'work', 'savings',
-                      'bolt', 'water_drop', 'wifi', 'movie', 'label'
-                    ].map(icon => (
-                      <button
-                        key={icon}
-                        type="button"
-                        onClick={() => setNewCategory({ ...newCategory, icon })}
-                        className={`size-10 flex items-center justify-center rounded-xl transition-all duration-200 relative ${newCategory.icon === icon ? 'bg-gradient-to-br from-primary to-primary/80 text-white shadow-lg shadow-primary/30 scale-110 ring-2 ring-primary/20' : 'bg-white dark:bg-slate-800 text-slate-400 hover:text-primary hover:scale-105 hover:shadow-md'}`}
-                      >
-                        <span className="material-symbols-outlined text-[20px]">{icon}</span>
-                        {newCategory.icon === icon && (
-                          <div className="absolute -bottom-1 -right-1 size-5 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full flex items-center justify-center border-2 border-white dark:border-slate-850 shadow-md">
-                            <span className="material-symbols-outlined text-white text-[12px] font-bold">check</span>
-                          </div>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className={newCategory.parent_id ? 'opacity-50 pointer-events-none' : ''}>
-                  <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Cor da Categoria</label>
-                  <select
-                    className="w-full h-11 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium outline-none"
-                    value={newCategory.color}
-                    onChange={e => setNewCategory({ ...newCategory, color: e.target.value })}
+              <div className="grid grid-cols-5 sm:grid-cols-10 gap-2 border border-slate-100 dark:border-slate-700 p-3 rounded-xl bg-slate-50/50 dark:bg-slate-850">
+                {[
+                  'shopping_bag', 'shopping_cart', 'restaurant', 'directions_car', 'home',
+                  'payments', 'health_and_safety', 'fitness_center', 'school', 'build',
+                  'pets', 'flight', 'store', 'work', 'savings',
+                  'bolt', 'water_drop', 'wifi', 'movie', 'label'
+                ].map(icon => (
+                  <button
+                    key={icon}
+                    type="button"
+                    onClick={() => setNewCategory({ ...newCategory, icon })}
+                    className={`size-10 flex items-center justify-center rounded-xl transition-all duration-200 relative ${newCategory.icon === icon ? 'bg-gradient-to-br from-primary to-primary/80 text-white shadow-lg shadow-primary/30 scale-110 ring-2 ring-primary/20' : 'bg-white dark:bg-slate-800 text-slate-400 hover:text-primary hover:scale-105 hover:shadow-md'}`}
                   >
-                    <option value="bg-slate-100 text-slate-600">Cinza</option>
-                    <option value="bg-blue-100 text-blue-600">Azul</option>
-                    <option value="bg-green-100 text-green-600">Verde</option>
-                    <option value="bg-red-100 text-red-600">Vermelho</option>
-                    <option value="bg-orange-100 text-orange-600">Laranja</option>
-                    <option value="bg-purple-100 text-purple-600">Roxo</option>
-                    <option value="bg-amber-100 text-amber-600">Amarelo</option>
-                    <option value="bg-teal-100 text-teal-600">Teal</option>
-                  </select>
-                </div>
+                    <span className="material-symbols-outlined text-[20px]">{icon}</span>
+                    {newCategory.icon === icon && (
+                      <div className="absolute -bottom-1 -right-1 size-5 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full flex items-center justify-center border-2 border-white dark:border-slate-850 shadow-md">
+                        <span className="material-symbols-outlined text-white text-[12px] font-bold">check</span>
+                      </div>
+                    )}
+                  </button>
+                ))}
               </div>
             </div>
-            <div className="p-6 bg-slate-50 dark:bg-slate-800/50 flex justify-end gap-3">
-              <button onClick={() => setIsCategoryModalOpen(false)} className="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-700 transition-colors">Cancelar</button>
-              <button
-                onClick={handleSaveCategory}
-                disabled={submitting}
-                className="px-6 py-2 bg-primary hover:bg-primary/90 text-white text-sm font-bold rounded-lg shadow-sm transition-all active:scale-95 disabled:opacity-50"
+
+            <div className={newCategory.parent_id ? 'opacity-50 pointer-events-none' : ''}>
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Cor da Categoria</label>
+              <select
+                className="w-full h-11 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium outline-none"
+                value={newCategory.color}
+                onChange={e => setNewCategory({ ...newCategory, color: e.target.value })}
               >
-                {submitting ? 'Salvando...' : (editingCategoryId ? 'Atualizar Categoria' : 'Criar Categoria')}
-              </button>
+                <option value="bg-slate-100 text-slate-600">Cinza</option>
+                <option value="bg-blue-100 text-blue-600">Azul</option>
+                <option value="bg-green-100 text-green-600">Verde</option>
+                <option value="bg-red-100 text-red-600">Vermelho</option>
+                <option value="bg-orange-100 text-orange-600">Laranja</option>
+                <option value="bg-purple-100 text-purple-600">Roxo</option>
+                <option value="bg-amber-100 text-amber-600">Amarelo</option>
+                <option value="bg-teal-100 text-teal-600">Teal</option>
+              </select>
             </div>
           </div>
         </div>
-      )}
+      </Modal>
 
       {/* Delete Confirmation Modal */}
       <ConfirmModal

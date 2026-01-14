@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import PageHeader from '../components/PageHeader';
 import ConfirmModal from '../components/ConfirmModal';
+import Modal from '../components/Modal';
 import FilterDrawer from '../components/FilterDrawer';
 import CustomerDetailsDrawer from '../components/CustomerDetailsDrawer';
 import CustomSelect from '../components/CustomSelect';
@@ -10,6 +11,8 @@ import { toast } from 'react-hot-toast';
 import { formatPhone, formatCpfCnpj } from '../utils/utils';
 import { ExcelIcon, ImportIcon } from '../components/BrandedIcons';
 import { exportToExcel, readExcelFile, downloadExampleTemplate } from '../utils/excelUtils';
+import StatCard from '../components/StatCard';
+import Tooltip from '../components/Tooltip';
 
 const Contacts: React.FC = () => {
   const navigate = useNavigate();
@@ -88,20 +91,24 @@ const Contacts: React.FC = () => {
       });
 
       // 2. Sum received payments per client (Income transactions)
-      // 2. Sum received payments per client (Income - Expense)
+      // 2. Sum received payments per client (Income transactions only)
+      const chargebacksByClient: Record<string, number> = {};
+
       transData.forEach((t: any) => {
         if (!receivedByClient[t.contact_id]) receivedByClient[t.contact_id] = 0;
+        if (!chargebacksByClient[t.contact_id]) chargebacksByClient[t.contact_id] = 0;
+
         if (t.type === 'income') {
           receivedByClient[t.contact_id] += Number(t.value);
         } else if (t.type === 'expense') {
-          // Expenses (like bounced checks) reduce the Total Received amount
-          receivedByClient[t.contact_id] -= Number(t.value);
+          // Chargebacks add to debt (Sales), they don't reduce received anymore (per user request)
+          chargebacksByClient[t.contact_id] += Number(t.value);
         }
       });
 
       // Calculate balance: Sales - Received
       const mergedContacts = (contactsData || []).map(c => {
-        const totalSalesValue = salesByClient[c.id] || 0;
+        const totalSalesValue = (salesByClient[c.id] || 0) + (chargebacksByClient[c.id] || 0);
         const totalReceivedValue = receivedByClient[c.id] || 0;
         return {
           ...c,
@@ -272,43 +279,39 @@ const Contacts: React.FC = () => {
       />
 
       {/* Import Modal */}
-      {importModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Importar Contatos</h3>
-              <button onClick={() => setImportModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-            <p className="text-sm text-slate-500">
-              Faça o upload de um arquivo .xlsx com as colunas: <strong>Nome, CPF_CNPJ, Telefone, Email</strong>.
-            </p>
-            <button
-              onClick={() => downloadExampleTemplate('contacts')}
-              className="text-xs text-primary font-bold hover:underline flex items-center gap-1"
-            >
-              <span className="material-symbols-outlined text-sm">download</span>
-              Baixar Planilha de Exemplo
-            </button>
-            <div className="flex flex-col gap-4 pt-2">
-              <input
-                type="file"
-                accept=".xlsx"
-                onChange={handleImport}
-                disabled={importing}
-                className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 file:cursor-pointer cursor-pointer"
-              />
-              {importing && (
-                <div className="flex items-center gap-2 text-sm text-primary font-bold animate-pulse">
-                  <span className="material-symbols-outlined animate-spin">refresh</span>
-                  Importando dados...
-                </div>
-              )}
-            </div>
+      <Modal
+        isOpen={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        title="Importar Contatos"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-500">
+            Faça o upload de um arquivo .xlsx com as colunas: <strong>Nome, CPF_CNPJ, Telefone, Email</strong>.
+          </p>
+          <button
+            onClick={() => downloadExampleTemplate('contacts')}
+            className="text-xs text-primary font-bold hover:underline flex items-center gap-1"
+          >
+            <span className="material-symbols-outlined text-sm">download</span>
+            Baixar Planilha de Exemplo
+          </button>
+          <div className="flex flex-col gap-4 pt-2">
+            <input
+              type="file"
+              accept=".xlsx"
+              onChange={handleImport}
+              disabled={importing}
+              className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 file:cursor-pointer cursor-pointer"
+            />
+            {importing && (
+              <div className="flex items-center gap-2 text-sm text-primary font-bold animate-pulse">
+                <span className="material-symbols-outlined animate-spin">refresh</span>
+                Importando dados...
+              </div>
+            )}
           </div>
         </div>
-      )}
+      </Modal>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -381,8 +384,15 @@ const Contacts: React.FC = () => {
                 </th>
                 <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Cliente</th>
                 <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Contato</th>
-                <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-right">Total Vendas</th>
-                <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-right">Total Recebido</th>
+                <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-right">
+                  <div className="flex items-center justify-end gap-1 whitespace-nowrap">
+                    Total Vendas
+                    <Tooltip content="Soma das Vendas + Cheques Devolvidos" position="top">
+                      <span className="material-symbols-outlined text-slate-400 hover:text-primary transition-colors text-[14px]">help</span>
+                    </Tooltip>
+                  </div>
+                </th>
+                <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-right whitespace-nowrap">Total Recebido</th>
                 <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-right">Saldo</th>
                 <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-right">Ações</th>
               </tr>
@@ -495,19 +505,7 @@ const Contacts: React.FC = () => {
   );
 };
 
-// Stat Card Component - Premium style matching Sales/Transactions
-const StatCard = ({ label, value, trend, icon, iconColor, valueColor, trendColor }: any) => (
-  <div className="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-850 border border-gray-200 dark:border-slate-700 shadow-sm group hover:border-primary/30 hover:shadow-md transition-all">
-    <div className="flex items-center justify-between">
-      <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-wider">{label}</p>
-      <span className={`material-symbols-outlined ${iconColor} p-2 rounded-lg`}>{icon}</span>
-    </div>
-    <p className={`text-2xl sm:text-3xl font-bold ${valueColor || 'text-slate-900 dark:text-white'}`}>{value}</p>
-    <p className={`${trendColor || 'text-slate-500'} text-xs font-medium flex items-center gap-1.5`}>
-      <span className="material-symbols-outlined text-sm">info</span> {trend}
-    </p>
-  </div>
-);
+
 
 // Contact Row Component - Premium style matching Sales/Transactions
 const ContactRow = ({ contact, onEdit, onDelete, onView }: any) => {

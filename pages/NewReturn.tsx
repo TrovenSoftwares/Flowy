@@ -6,6 +6,7 @@ import CustomSelect from '../components/CustomSelect';
 import InputMask from '../components/InputMask';
 import { MASKS, formatCpfCnpj } from '../utils/utils';
 import { toast } from 'react-hot-toast';
+import { WeightIcon } from '../components/BrandedIcons';
 
 const NewReturn: React.FC = () => {
     const navigate = useNavigate();
@@ -383,7 +384,7 @@ const NewReturn: React.FC = () => {
                                             Peso (gramas)
                                         </label>
                                         <div className="flex items-center bg-[#f1f5f9] dark:bg-slate-900 rounded-lg h-12 px-4 focus-within:ring-2 focus-within:ring-primary/30 focus-within:bg-white dark:focus-within:bg-slate-950 transition-all border border-transparent">
-                                            <span className="material-symbols-outlined text-slate-400 mr-2">scale</span>
+                                            <WeightIcon className="size-5 text-slate-400 mr-2" />
                                             <input
                                                 className="bg-transparent border-none w-full text-slate-900 dark:text-white font-bold text-lg focus:ring-0 p-0"
                                                 placeholder="0"

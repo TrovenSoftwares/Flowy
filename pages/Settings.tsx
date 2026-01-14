@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 import { evolutionApi } from '../lib/evolution';
 import { WhatsAppIcon } from '../components/BrandedIcons';
 import ConfirmModal from '../components/ConfirmModal';
+import Modal from '../components/Modal';
 
 const Settings: React.FC = () => {
   const [activeTab, setActiveTab] = useState('perfil');
@@ -702,143 +703,131 @@ const Settings: React.FC = () => {
       />
 
       {/* Instance Name Modal */}
-      {isInstanceModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 text-left">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-200 dark:border-slate-800">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-800">
-              <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary">qr_code_2</span>
-                {isEditingInstance ? 'Editar Nome da Instância' : 'Configurar WhatsApp'}
-              </h3>
-            </div>
-            <div className="p-6 space-y-4">
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Nome da Instância</label>
-                <input
-                  type="text"
-                  autoFocus
-                  value={newInstanceName}
-                  onChange={(e) => setNewInstanceName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                  placeholder="ex: minha-loja"
-                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-                />
-              </div>
-            </div>
-            <div className="p-6 bg-slate-50 dark:bg-slate-800/50 flex gap-3">
-              <button
-                onClick={() => setIsInstanceModalOpen(false)}
-                className="flex-1 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 font-bold hover:bg-white transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={async () => {
-                  setSaving(true);
-                  try {
-                    const { data: { user } } = await supabase.auth.getUser();
-                    if (!user) return;
+      <Modal
+        isOpen={isInstanceModalOpen}
+        onClose={() => setIsInstanceModalOpen(false)}
+        title={isEditingInstance ? 'Editar Nome da Instância' : 'Configurar WhatsApp'}
+        footer={
+          <>
+            <button
+              onClick={() => setIsInstanceModalOpen(false)}
+              className="px-4 py-2 rounded-lg text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={async () => {
+                setSaving(true);
+                try {
+                  const { data: { user } } = await supabase.auth.getUser();
+                  if (!user) return;
 
-                    const instanceToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+                  const instanceToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 
-                    // 1. Prepare Atomic Config exactly as requested
-                    const extraConfig = {
-                      rejectCall: false,
-                      groupsIgnore: false,
-                      alwaysOnline: false,
-                      readMessages: false,
-                      readStatus: false,
-                      syncFullHistory: true,
-                      webhook: {
-                        url: DEFAULT_WEBHOOK_URL,
-                        byEvents: false,
-                        base64: true,
-                        headers: {
-                          "autorization": `Bearer ${instanceToken}`,
-                          "Content-Type": "application/json"
-                        },
-                        events: DEFAULT_WEBHOOK_EVENTS
-                      }
-                    };
-
-                    await evolutionApi.createInstance(newInstanceName, instanceToken, extraConfig);
-
-                    // 2. Save to dedicated instances table
-                    const { error: dbError } = await supabase.from('instances').upsert({
-                      user_id: user.id,
-                      name: newInstanceName,
-                      token: instanceToken,
-                      status: 'connecting',
-                      updated_at: new Date().toISOString()
-                    }, { onConflict: 'user_id,name' });
-
-                    if (dbError) throw dbError;
-
-                    await supabase.from('user_settings').upsert({
-                      user_id: user.id,
-                      ai_config: {
-                        ...aiConfig,
-                        whatsappInstance: newInstanceName
+                  // 1. Prepare Atomic Config exactly as requested
+                  const extraConfig = {
+                    rejectCall: false,
+                    groupsIgnore: false,
+                    alwaysOnline: false,
+                    readMessages: false,
+                    readStatus: false,
+                    syncFullHistory: true,
+                    webhook: {
+                      url: DEFAULT_WEBHOOK_URL,
+                      byEvents: false,
+                      base64: true,
+                      headers: {
+                        "autorization": `Bearer ${instanceToken}`,
+                        "Content-Type": "application/json"
                       },
-                      updated_at: new Date().toISOString()
-                    }, { onConflict: 'user_id' });
-
-                    setInstanceName(newInstanceName);
-                    setIsInstanceModalOpen(false);
-                    setIsEditingInstance(false);
-
-                    if (isEditingInstance) {
-                      toast.success('Instância renomeada! Necessário reconectar.');
-                    } else {
-                      toast.success('Pronto! Agora gere o QR Code.');
+                      events: DEFAULT_WEBHOOK_EVENTS
                     }
-                  } catch (e: any) {
-                    console.error(e);
-                    toast.error(e.message || 'Erro ao conectar instância.');
-                  } finally {
-                    setSaving(false);
+                  };
+
+                  await evolutionApi.createInstance(newInstanceName, instanceToken, extraConfig);
+
+                  // 2. Save to dedicated instances table
+                  const { error: dbError } = await supabase.from('instances').upsert({
+                    user_id: user.id,
+                    name: newInstanceName,
+                    token: instanceToken,
+                    status: 'connecting',
+                    updated_at: new Date().toISOString()
+                  }, { onConflict: 'user_id,name' });
+
+                  if (dbError) throw dbError;
+
+                  await supabase.from('user_settings').upsert({
+                    user_id: user.id,
+                    ai_config: {
+                      ...aiConfig,
+                      whatsappInstance: newInstanceName
+                    },
+                    updated_at: new Date().toISOString()
+                  }, { onConflict: 'user_id' });
+
+                  setInstanceName(newInstanceName);
+                  setIsInstanceModalOpen(false);
+                  setIsEditingInstance(false);
+
+                  if (isEditingInstance) {
+                    toast.success('Instância renomeada! Necessário reconectar.');
+                  } else {
+                    toast.success('Pronto! Agora gere o QR Code.');
                   }
-                }}
-                className="flex-1 px-4 py-3 rounded-xl bg-primary text-white font-bold hover:bg-primary/90 shadow-lg shadow-primary/20"
-                disabled={saving || !newInstanceName}
-              >
-                {saving ? 'Salvando...' : 'Salvar'}
-              </button>
-            </div>
-          </div>
+                } catch (e: any) {
+                  console.error(e);
+                  toast.error(e.message || 'Erro ao conectar instância.');
+                } finally {
+                  setSaving(false);
+                }
+              }}
+              className="px-6 py-2 rounded-lg text-sm font-bold text-white bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2"
+              disabled={saving || !newInstanceName}
+            >
+              {saving ? 'Salvando...' : 'Salvar'}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-2">
+          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider ml-1">Nome da Instância</label>
+          <input
+            type="text"
+            autoFocus
+            value={newInstanceName}
+            onChange={(e) => setNewInstanceName(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+            placeholder="ex: minha-loja"
+            className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+          />
         </div>
-      )}
+      </Modal>
 
       {/* Error Details Modal */}
       {apiError && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden border border-red-200 dark:border-red-900/30">
-            <div className="p-6 border-b border-red-50 dark:bg-red-50/10 flex items-center justify-between">
-              <div className="flex items-center gap-3 text-red-600">
-                <span className="material-symbols-outlined text-3xl">error</span>
-                <h3 className="text-xl font-bold">{apiError.title}</h3>
-              </div>
-              <button onClick={() => setApiError(null)} className="text-slate-400 hover:text-slate-600 transition-colors">
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <p className="text-slate-600 dark:text-slate-400 font-medium">{apiError.message}</p>
-              <div className="bg-slate-900 rounded-xl p-4 overflow-auto max-h-[300px]">
-                <pre className="text-pink-400 font-mono text-xs leading-relaxed whitespace-pre-wrap">
-                  {JSON.stringify(apiError.details, null, 2)}
-                </pre>
-              </div>
-            </div>
-            <div className="p-6 bg-slate-50 dark:bg-slate-800/50 flex justify-end">
-              <button
-                onClick={() => setApiError(null)}
-                className="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-slate-800 transition-all active:scale-95 text-sm"
-              >
-                Entendi
-              </button>
+        <Modal
+          isOpen={!!apiError}
+          onClose={() => setApiError(null)}
+          title={apiError.title}
+          size="lg"
+          footer={
+            <button
+              onClick={() => setApiError(null)}
+              className="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-slate-800 transition-all active:scale-95 text-sm"
+            >
+              Entendi
+            </button>
+          }
+        >
+          <div className="space-y-4">
+            <p className="text-slate-600 dark:text-slate-400 font-medium">{apiError.message}</p>
+            <div className="bg-slate-900 rounded-xl p-4 overflow-auto max-h-[300px]">
+              <pre className="text-pink-400 font-mono text-xs leading-relaxed whitespace-pre-wrap">
+                {JSON.stringify(apiError.details, null, 2)}
+              </pre>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import CustomSelect from '../components/CustomSelect';
 import ConfirmModal from '../components/ConfirmModal';
+import Modal from '../components/Modal';
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
 import { formatDate } from '../utils/utils';
@@ -10,7 +11,8 @@ import { toast } from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { exportToExcel, readExcelFile, downloadExampleTemplate, formatExcelDate } from '../utils/excelUtils';
-import { PdfIcon, ExcelIcon, ImportIcon } from '../components/BrandedIcons';
+import { PdfIcon, ExcelIcon, ImportIcon, WeightIcon } from '../components/BrandedIcons';
+import StatCard from '../components/StatCard';
 
 const Sales: React.FC = () => {
   const navigate = useNavigate();
@@ -403,43 +405,40 @@ const Sales: React.FC = () => {
       />
 
       {/* Import Modal */}
-      {importModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Importar Vendas</h3>
-              <button onClick={() => setImportModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-            <p className="text-sm text-slate-500">
-              Faça o upload de um arquivo .xlsx com as colunas: <strong>Cliente, Data, Valor_Total, Peso_Gramas, Frete, Vendedor</strong>.
-            </p>
-            <button
-              onClick={() => downloadExampleTemplate('sales')}
-              className="text-xs text-primary font-bold hover:underline flex items-center gap-1"
-            >
-              <span className="material-symbols-outlined text-sm">download</span>
-              Baixar Planilha de Exemplo
-            </button>
-            <div className="flex flex-col gap-4 pt-2">
-              <input
-                type="file"
-                accept=".xlsx"
-                onChange={handleImportExcel}
-                disabled={importing}
-                className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 file:cursor-pointer cursor-pointer"
-              />
-              {importing && (
-                <div className="flex items-center gap-2 text-sm text-primary font-bold animate-pulse">
-                  <span className="material-symbols-outlined animate-spin">refresh</span>
-                  Importando dados...
-                </div>
-              )}
-            </div>
+      {/* Import Modal */}
+      <Modal
+        isOpen={importModalOpen}
+        onClose={() => setImportModalOpen(false)}
+        title="Importar Vendas"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-500">
+            Faça o upload de um arquivo .xlsx com as colunas: <strong>Cliente, Data, Valor_Total, Peso_Gramas, Frete, Vendedor</strong>.
+          </p>
+          <button
+            onClick={() => downloadExampleTemplate('sales')}
+            className="text-xs text-primary font-bold hover:underline flex items-center gap-1"
+          >
+            <span className="material-symbols-outlined text-sm">download</span>
+            Baixar Planilha de Exemplo
+          </button>
+          <div className="flex flex-col gap-4 pt-2">
+            <input
+              type="file"
+              accept=".xlsx"
+              onChange={handleImportExcel}
+              disabled={importing}
+              className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 file:cursor-pointer cursor-pointer"
+            />
+            {importing && (
+              <div className="flex items-center gap-2 text-sm text-primary font-bold animate-pulse">
+                <span className="material-symbols-outlined animate-spin">refresh</span>
+                Importando dados...
+              </div>
+            )}
           </div>
         </div>
-      )}
+      </Modal>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -463,7 +462,7 @@ const Sales: React.FC = () => {
           value={`${stats.totalWeight.toLocaleString('pt-BR')}g`}
           secondaryValue={stats.totalWeight > 0 ? `R$ ${(stats.totalValue / stats.totalWeight).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/g` : null}
           trend="Soma de produtos"
-          icon="scale"
+          icon={<WeightIcon className="size-6 text-amber-500" />}
           iconColor="text-amber-500 bg-amber-500/10"
         />
         <StatCard
@@ -594,29 +593,7 @@ const Sales: React.FC = () => {
   );
 };
 
-// Stat Card Component - Premium style with optional secondary value
-const StatCard = ({ label, value, secondaryValue, trend, icon, iconColor, valueColor, trendColor }: any) => (
-  <div className="flex flex-col gap-2 rounded-xl p-6 bg-white dark:bg-slate-850 border border-gray-200 dark:border-slate-700 shadow-sm group hover:border-primary/30 hover:shadow-md transition-all">
-    <div className="flex items-center justify-between">
-      <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-wider">{label}</p>
-      <span className={`material-symbols-outlined ${iconColor} p-2 rounded-lg`}>{icon}</span>
-    </div>
-    <div className="flex flex-col">
-      <p className={`text-2xl sm:text-3xl font-bold whitespace-nowrap ${valueColor || 'text-slate-900 dark:text-white'}`}>{value}</p>
-      {secondaryValue && (
-        <div className="flex items-center gap-1.5 mt-1">
-          <div className="h-px flex-1 bg-gradient-to-r from-amber-400/50 to-transparent"></div>
-          <span className="text-xs font-bold text-amber-600 dark:text-amber-400 whitespace-nowrap">
-            ≈ {secondaryValue}
-          </span>
-        </div>
-      )}
-    </div>
-    <p className={`${trendColor || 'text-slate-500'} text-xs font-medium flex items-center gap-1.5`}>
-      <span className="material-symbols-outlined text-sm">info</span> {trend}
-    </p>
-  </div>
-);
+
 
 // Sale Row Component - with Edit button
 const SaleRow = ({ sale, onEdit, onDelete }: any) => {
