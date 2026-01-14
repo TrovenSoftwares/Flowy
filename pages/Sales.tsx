@@ -518,39 +518,41 @@ const Sales: React.FC = () => {
       </div>
 
       {/* Table Area */}
-      <div className="bg-white dark:bg-slate-850 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden overflow-x-auto">
-        <table className="w-full text-left border-collapse min-w-[1000px]">
-          <thead>
-            <tr className="bg-gray-50 dark:bg-slate-900/50 border-b border-gray-200 dark:border-slate-700">
-              <th className="py-4 pl-6 pr-3 w-12 text-center">
-                <input className="rounded border-gray-300 dark:border-slate-600 dark:bg-slate-800 text-primary focus:ring-primary/50 size-4" type="checkbox" />
-              </th>
-              <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Cliente / Conta</th>
-              <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-center">Data</th>
-              <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-right">Valor Total</th>
-              <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-center">Peso</th>
-              <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-right">Frete</th>
-              <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Vendedor</th>
-              <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-right">Ações</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
-            {loading ? (
-              <tr><td colSpan={8} className="py-12 text-center text-gray-400 italic">Carregando vendas...</td></tr>
-            ) : paginatedSales.length === 0 ? (
-              <tr><td colSpan={8} className="py-12 text-center text-gray-400 italic">Nenhuma venda encontrada.</td></tr>
-            ) : (
-              paginatedSales.map(sale => (
-                <SaleRow
-                  key={sale.id}
-                  sale={sale}
-                  onEdit={() => navigate(`/sales/edit/${sale.id}`)}
-                  onDelete={() => { setSaleToDelete(sale.id); setIsDeleteModalOpen(true); }}
-                />
-              ))
-            )}
-          </tbody>
-        </table>
+      <div className="bg-white dark:bg-slate-850 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse min-w-[1000px]">
+            <thead>
+              <tr className="bg-gray-50 dark:bg-slate-900/50 border-b border-gray-200 dark:border-slate-700">
+                <th className="py-4 pl-6 pr-3 w-12 text-center">
+                  <input className="rounded border-gray-300 dark:border-slate-600 dark:bg-slate-800 text-primary focus:ring-primary/50 size-4" type="checkbox" />
+                </th>
+                <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Cliente / Conta</th>
+                <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-center">Data</th>
+                <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-right">Valor Total</th>
+                <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-center">Peso</th>
+                <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-right">Frete</th>
+                <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Vendedor</th>
+                <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
+              {loading ? (
+                <tr><td colSpan={8} className="py-12 text-center text-gray-400 italic">Carregando vendas...</td></tr>
+              ) : paginatedSales.length === 0 ? (
+                <tr><td colSpan={8} className="py-12 text-center text-gray-400 italic">Nenhuma venda encontrada.</td></tr>
+              ) : (
+                paginatedSales.map(sale => (
+                  <SaleRow
+                    key={sale.id}
+                    sale={sale}
+                    onEdit={() => navigate(`/sales/edit/${sale.id}`)}
+                    onDelete={() => { setSaleToDelete(sale.id); setIsDeleteModalOpen(true); }}
+                  />
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
 
         {/* Pagination Footer */}
         <div className="border-t border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-900/50 px-6 py-4 flex items-center justify-between">

@@ -365,39 +365,41 @@ const Contacts: React.FC = () => {
       </div>
 
       {/* Table Area */}
-      <div className="bg-white dark:bg-slate-850 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden overflow-x-auto">
-        <table className="w-full text-left border-collapse min-w-[800px]">
-          <thead>
-            <tr className="bg-gray-50 dark:bg-slate-900/50 border-b border-gray-200 dark:border-slate-700">
-              <th className="py-4 pl-6 pr-3 w-12 text-center">
-                <input className="rounded border-gray-300 dark:border-slate-600 dark:bg-slate-800 text-primary focus:ring-primary/50 size-4" type="checkbox" />
-              </th>
-              <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Cliente</th>
-              <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Contato</th>
-              <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-right">Total Vendas</th>
-              <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-right">Total Recebido</th>
-              <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-right">Saldo</th>
-              <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-right">Ações</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
-            {loading ? (
-              <tr><td colSpan={7} className="py-12 text-center text-gray-400 italic">Carregando contatos...</td></tr>
-            ) : paginatedContacts.length === 0 ? (
-              <tr><td colSpan={7} className="py-12 text-center text-gray-400 italic">Nenhum contato encontrado.</td></tr>
-            ) : (
-              paginatedContacts.map(contact => (
-                <ContactRow
-                  key={contact.id}
-                  contact={contact}
-                  onEdit={() => navigate(`/contacts/edit/${contact.id}`)}
-                  onDelete={() => setDeleteModal({ isOpen: true, id: contact.id })}
-                  onView={() => { setSelectedContact(contact); setIsDetailsOpen(true); }}
-                />
-              ))
-            )}
-          </tbody>
-        </table>
+      <div className="bg-white dark:bg-slate-850 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse min-w-[800px]">
+            <thead>
+              <tr className="bg-gray-50 dark:bg-slate-900/50 border-b border-gray-200 dark:border-slate-700">
+                <th className="py-4 pl-6 pr-3 w-12 text-center">
+                  <input className="rounded border-gray-300 dark:border-slate-600 dark:bg-slate-800 text-primary focus:ring-primary/50 size-4" type="checkbox" />
+                </th>
+                <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Cliente</th>
+                <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Contato</th>
+                <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-right">Total Vendas</th>
+                <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-right">Total Recebido</th>
+                <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-right">Saldo</th>
+                <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
+              {loading ? (
+                <tr><td colSpan={7} className="py-12 text-center text-gray-400 italic">Carregando contatos...</td></tr>
+              ) : paginatedContacts.length === 0 ? (
+                <tr><td colSpan={7} className="py-12 text-center text-gray-400 italic">Nenhum contato encontrado.</td></tr>
+              ) : (
+                paginatedContacts.map(contact => (
+                  <ContactRow
+                    key={contact.id}
+                    contact={contact}
+                    onEdit={() => navigate(`/contacts/edit/${contact.id}`)}
+                    onDelete={() => setDeleteModal({ isOpen: true, id: contact.id })}
+                    onView={() => { setSelectedContact(contact); setIsDetailsOpen(true); }}
+                  />
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
 
         {/* Pagination Footer */}
         <div className="border-t border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-900/50 px-6 py-4 flex items-center justify-between">

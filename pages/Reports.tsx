@@ -463,62 +463,64 @@ const Reports: React.FC = () => {
           </div>
 
           {/* Table Area */}
-          <div className="bg-white dark:bg-slate-850 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden overflow-x-auto">
+          <div className="bg-white dark:bg-slate-850 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col">
             <div className="p-4 border-b border-gray-200 dark:border-slate-700 flex justify-between items-center">
               <h3 className="text-lg font-bold text-slate-900 dark:text-white">Detalhamento das Transações</h3>
               <span className="text-xs font-bold text-slate-400 uppercase">{transactions.length} lançamentos</span>
             </div>
-            <table className="w-full text-left border-collapse min-w-[800px]">
-              <thead>
-                <tr className="bg-gray-50 dark:bg-slate-900/50 border-b border-gray-200 dark:border-slate-700">
-                  <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Data</th>
-                  <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Descrição</th>
-                  <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Categoria</th>
-                  <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-center">Origem</th>
-                  <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-right">Valor</th>
-                  <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-center">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
-                {loading ? (
-                  <tr><td colSpan={6} className="py-12 text-center text-gray-400 italic">Carregando...</td></tr>
-                ) : paginatedTransactions.length === 0 ? (
-                  <tr><td colSpan={6} className="py-12 text-center text-gray-400 italic">Nenhuma transação encontrada.</td></tr>
-                ) : (
-                  paginatedTransactions.map(t => (
-                    <tr key={t.id} className="group hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors">
-                      <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap">{formatDate(t.date)}</td>
-                      <td className="px-4 py-4 text-sm font-medium text-slate-900 dark:text-white">{t.description}</td>
-                      <td className="px-4 py-4">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 uppercase">
-                          {t.categories?.name || 'Geral'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-4 text-center">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase ${t.is_ai ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-slate-100 text-slate-500 dark:bg-slate-800'}`}>
-                          <span className="material-symbols-outlined text-[12px]">{t.is_ai ? 'smart_toy' : 'edit_note'}</span>
-                          {t.is_ai ? 'IA' : 'Manual'}
-                        </span>
-                      </td>
-                      <td className={`px-4 py-4 text-sm font-bold text-right whitespace-nowrap ${t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                        {t.type === 'income' ? '+' : '-'} {"R$\u00A0"}{Number(t.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                      </td>
-                      <td className="px-4 py-4 text-center">
-                        {t.status === 'confirmed' ? (
-                          <span className="inline-flex items-center justify-center size-6 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600">
-                            <span className="material-symbols-outlined text-[16px]">check</span>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[800px]">
+                <thead>
+                  <tr className="bg-gray-50 dark:bg-slate-900/50 border-b border-gray-200 dark:border-slate-700">
+                    <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Data</th>
+                    <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Descrição</th>
+                    <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Categoria</th>
+                    <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-center">Origem</th>
+                    <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-right">Valor</th>
+                    <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-center">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
+                  {loading ? (
+                    <tr><td colSpan={6} className="py-12 text-center text-gray-400 italic">Carregando...</td></tr>
+                  ) : paginatedTransactions.length === 0 ? (
+                    <tr><td colSpan={6} className="py-12 text-center text-gray-400 italic">Nenhuma transação encontrada.</td></tr>
+                  ) : (
+                    paginatedTransactions.map(t => (
+                      <tr key={t.id} className="group hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors">
+                        <td className="px-4 py-4 text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap">{formatDate(t.date)}</td>
+                        <td className="px-4 py-4 text-sm font-medium text-slate-900 dark:text-white">{t.description}</td>
+                        <td className="px-4 py-4">
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 uppercase">
+                            {t.categories?.name || 'Geral'}
                           </span>
-                        ) : (
-                          <span className="inline-flex items-center justify-center size-6 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600">
-                            <span className="material-symbols-outlined text-[16px]">pending</span>
+                        </td>
+                        <td className="px-4 py-4 text-center">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase ${t.is_ai ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-slate-100 text-slate-500 dark:bg-slate-800'}`}>
+                            <span className="material-symbols-outlined text-[12px]">{t.is_ai ? 'smart_toy' : 'edit_note'}</span>
+                            {t.is_ai ? 'IA' : 'Manual'}
                           </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                        </td>
+                        <td className={`px-4 py-4 text-sm font-bold text-right whitespace-nowrap ${t.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                          {t.type === 'income' ? '+' : '-'} {"R$\u00A0"}{Number(t.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className="px-4 py-4 text-center">
+                          {t.status === 'confirmed' ? (
+                            <span className="inline-flex items-center justify-center size-6 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600">
+                              <span className="material-symbols-outlined text-[16px]">check</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center justify-center size-6 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-600">
+                              <span className="material-symbols-outlined text-[16px]">pending</span>
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
 
             {/* Pagination Footer */}
             <div className="border-t border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-900/50 px-6 py-4 flex items-center justify-between">

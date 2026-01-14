@@ -200,37 +200,39 @@ const Team: React.FC = () => {
       </div>
 
       {/* Table Area */}
-      <div className="bg-white dark:bg-slate-850 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden overflow-x-auto">
-        <table className="w-full text-left border-collapse min-w-[700px]">
-          <thead>
-            <tr className="bg-gray-50 dark:bg-slate-900/50 border-b border-gray-200 dark:border-slate-700">
-              <th className="py-4 pl-6 pr-3 w-12 text-center">
-                <input className="rounded border-gray-300 dark:border-slate-600 dark:bg-slate-800 text-primary focus:ring-primary/50 size-4" type="checkbox" />
-              </th>
-              <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Membro</th>
-              <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Contato</th>
-              <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-center">Monitoramento IA</th>
-              <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-right">Ações</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
-            {loading ? (
-              <tr><td colSpan={5} className="py-12 text-center text-gray-400 italic">Carregando equipe...</td></tr>
-            ) : paginatedContacts.length === 0 ? (
-              <tr><td colSpan={5} className="py-12 text-center text-gray-400 italic">Nenhum membro encontrado.</td></tr>
-            ) : (
-              paginatedContacts.map(member => (
-                <TeamRow
-                  key={member.id}
-                  member={member}
-                  onToggleMonitoring={() => toggleMonitoring(member.id, !!member.whatsapp_monitoring)}
-                  onEdit={() => navigate(`/team/edit/${member.id}`)}
-                  onDelete={() => setDeleteModal({ isOpen: true, id: member.id })}
-                />
-              ))
-            )}
-          </tbody>
-        </table>
+      <div className="bg-white dark:bg-slate-850 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse min-w-[700px]">
+            <thead>
+              <tr className="bg-gray-50 dark:bg-slate-900/50 border-b border-gray-200 dark:border-slate-700">
+                <th className="py-4 pl-6 pr-3 w-12 text-center">
+                  <input className="rounded border-gray-300 dark:border-slate-600 dark:bg-slate-800 text-primary focus:ring-primary/50 size-4" type="checkbox" />
+                </th>
+                <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Membro</th>
+                <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Contato</th>
+                <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-center">Monitoramento IA</th>
+                <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
+              {loading ? (
+                <tr><td colSpan={5} className="py-12 text-center text-gray-400 italic">Carregando equipe...</td></tr>
+              ) : paginatedContacts.length === 0 ? (
+                <tr><td colSpan={5} className="py-12 text-center text-gray-400 italic">Nenhum membro encontrado.</td></tr>
+              ) : (
+                paginatedContacts.map(member => (
+                  <TeamRow
+                    key={member.id}
+                    member={member}
+                    onToggleMonitoring={() => toggleMonitoring(member.id, !!member.whatsapp_monitoring)}
+                    onEdit={() => navigate(`/team/edit/${member.id}`)}
+                    onDelete={() => setDeleteModal({ isOpen: true, id: member.id })}
+                  />
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
 
         {/* Pagination Footer */}
         <div className="border-t border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-900/50 px-6 py-4 flex items-center justify-between">
