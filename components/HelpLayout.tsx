@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import PublicHeader from './PublicHeader';
+import PublicFooter from './PublicFooter';
 
 const HelpLayout: React.FC<{ children: React.ReactNode; title: string; category: string }> = ({ children, title, category }) => {
     const [feedbackSent, setFeedbackSent] = React.useState(false);
@@ -51,6 +52,8 @@ const HelpLayout: React.FC<{ children: React.ReactNode; title: string; category:
                     )}
                 </footer>
             </main>
+
+            <PublicFooter />
         </div>
     );
 };

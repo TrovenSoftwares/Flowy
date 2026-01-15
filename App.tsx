@@ -6,6 +6,7 @@ import Header from './components/Header';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { PhyrLogo } from './components/BrandedIcons';
 import ScrollToTop from './components/ScrollToTop';
+import WhatsAppChat from './components/WhatsAppChat';
 import { Toaster } from 'react-hot-toast';
 import { Navigate } from 'react-router-dom';
 import Dashboard from './pages/Dashboard';
@@ -227,7 +228,11 @@ const App: React.FC = () => {
   React.useEffect(() => {
     const handleContextMenu = (e: MouseEvent) => { e.preventDefault(); };
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && e.key === 'I') || (e.ctrlKey && e.shiftKey && e.key === 'J') || (e.ctrlKey && e.key === 'u')) {
+      if (
+        e.key === 'F12' ||
+        (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j' || e.key === 'C' || e.key === 'c')) ||
+        (e.ctrlKey && (e.key === 'u' || e.key === 'U'))
+      ) {
         e.preventDefault();
       }
     };
@@ -261,6 +266,7 @@ const App: React.FC = () => {
             },
           },
         }} />
+        <WhatsAppChat />
         <AppContent />
       </AuthProvider>
     </Router>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import PublicHeader from '../components/PublicHeader';
+import PublicFooter from '../components/PublicFooter';
 import { WhatsAppIcon } from '../components/BrandedIcons'; // Note: check path if needed, usually in components
 
 const Help: React.FC = () => {
@@ -115,6 +116,8 @@ const Help: React.FC = () => {
                     </button>
                 </div>
             </main>
+
+            <PublicFooter />
         </div>
     );
 };

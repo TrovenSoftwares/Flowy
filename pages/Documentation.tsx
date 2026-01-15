@@ -2,6 +2,7 @@ import React from 'react';
 import PageHeader from '../components/PageHeader';
 import { PhyrLogo, WhatsAppIcon } from '../components/BrandedIcons';
 import PublicHeader from '../components/PublicHeader';
+import PublicFooter from '../components/PublicFooter';
 import { Link } from 'react-router-dom';
 
 const Documentation: React.FC = () => {
@@ -191,6 +192,8 @@ const Documentation: React.FC = () => {
                     </div>
                 </div>
             </main>
+
+            <PublicFooter />
         </div>
     );
 };

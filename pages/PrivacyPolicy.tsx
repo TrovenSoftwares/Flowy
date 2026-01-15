@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import PublicHeader from '../components/PublicHeader';
+import PublicFooter from '../components/PublicFooter';
 
 const PrivacyPolicy: React.FC = () => {
     return (
@@ -67,6 +68,8 @@ const PrivacyPolicy: React.FC = () => {
                     </section>
                 </div>
             </main>
+
+            <PublicFooter />
         </div>
     );
 };

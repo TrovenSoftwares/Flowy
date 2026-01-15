@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import PublicHeader from '../components/PublicHeader';
+import PublicFooter from '../components/PublicFooter';
 
 const TermsOfUse: React.FC = () => {
     return (
@@ -67,6 +68,8 @@ const TermsOfUse: React.FC = () => {
                     </p>
                 </div>
             </main>
+
+            <PublicFooter />
         </div>
     );
 };

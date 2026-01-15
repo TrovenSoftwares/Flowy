@@ -101,12 +101,40 @@
 }
 </script>
     <link rel="stylesheet" href="/index.css">
+    <link rel="stylesheet" href="/index.css">
 </head>
 
 <body
     class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen selection:bg-primary/30 selection:text-primary">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
+    <script>
+        window.chatwootSettings = {
+            hideMessageBubble: true,
+            position: 'right',
+            locale: 'pt_BR',
+            type: 'standard',
+            onSDKReady: () => {
+                console.log('Chatwoot SDK READY');
+                window.isChatwootReady = true;
+            }
+        };
+
+        (function (d, t) {
+            var BASE_URL = "https://cw.troven.com.br";
+            var g = d.createElement(t), s = d.getElementsByTagName(t)[0];
+            g.src = BASE_URL + "/packs/js/sdk.js";
+            g.async = true;
+            s.parentNode.insertBefore(g, s);
+            g.onload = function () {
+                console.log('Chatwoot Script Loaded');
+                window.chatwootSDK.run({
+                    websiteToken: 'waz3bLLs7QqkpYkcgnx4zKRg',
+                    baseUrl: BASE_URL
+                })
+            }
+        })(document, "script");
+    </script>
 </body>
 
 </html>
