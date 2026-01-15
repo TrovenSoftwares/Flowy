@@ -2,6 +2,15 @@
 
 Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 
+## [1.2.1] - 2026-01-15
+### Adicionado
+- **Atalhos de Teclado**: Sistema completo de navegação rápida via teclado.
+- **Command Palette**: Modal de busca rápida estilo VS Code (Ctrl+K ou Cmd+K).
+- **Navegação por Atalhos**: Alt+1 a Alt+8 para acesso direto às páginas principais.
+- **Busca Inteligente**: Pesquisa por páginas e ações com navegação por setas e Enter.
+
+---
+
 ## [1.2.0] - 2026-01-15
 ### Adicionado
 - **Rebranding Flowy**: Transição completa da marca Phyr para Flowy.

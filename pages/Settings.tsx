@@ -44,7 +44,7 @@ const Settings: React.FC = () => {
   const [isEditingInstance, setIsEditingInstance] = React.useState(false);
   const [isDisconnectModalOpen, setIsDisconnectModalOpen] = React.useState(false);
   const [apiError, setApiError] = React.useState<{ title: string; message: string; details?: any } | null>(null);
-  const [systemVersion, setSystemVersion] = useState({ version: '1.0.3', description: 'Premium' });
+  const [systemVersion, setSystemVersion] = useState({ version: '...', description: 'Carregando...' });
   const [changelogs, setChangelogs] = useState<any[]>([]);
   const [loadingChangelogs, setLoadingChangelogs] = useState(false);
 
@@ -150,7 +150,7 @@ const Settings: React.FC = () => {
           ];
           setChangelogs(mockData);
           if (mockData.length > 0) {
-            setSystemVersion(prev => ({ ...prev, version: mockData[0].version }));
+            setSystemVersion({ version: mockData[0].version, description: mockData[0].title });
           }
         } else {
           throw error;
@@ -158,7 +158,7 @@ const Settings: React.FC = () => {
       } else {
         setChangelogs(data || []);
         if (data && data.length > 0) {
-          setSystemVersion(prev => ({ ...prev, version: data[0].version }));
+          setSystemVersion({ version: data[0].version, description: data[0].title });
         }
       }
     } catch (error) {

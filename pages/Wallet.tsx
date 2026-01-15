@@ -323,7 +323,7 @@ const Wallet: React.FC = () => {
               </button>
               <button
                 onClick={() => setIsAccountModalOpen(true)}
-                className="inline-flex items-center justify-center px-3 sm:px-4 py-2 bg-primary rounded-lg text-sm font-bold text-white hover:bg-primary transition-colors gap-2 shadow-sm shadow-primary/30 active:scale-95"
+                className="inline-flex items-center justify-center px-3 sm:px-4 py-2 bg-primary rounded-lg text-sm font-bold text-white hover:bg-primary transition-colors gap-2 shadow-sm shadow-primary/30 active:scale-95 whitespace-nowrap"
               >
                 <span className="material-symbols-outlined text-[20px]">add</span>
                 <span className="hidden sm:inline">Nova Conta</span>

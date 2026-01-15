@@ -8,6 +8,8 @@ import { FlowyLogo } from './components/BrandedIcons';
 import ScrollToTop from './components/ScrollToTop';
 import { Toaster } from 'react-hot-toast';
 import { Navigate } from 'react-router-dom';
+import CommandPalette from './components/CommandPalette';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import Dashboard from './pages/Dashboard';
 import Review from './pages/Review';
 import Wallet from './pages/Wallet';
@@ -65,9 +67,17 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 const AppContent = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut } = useAuth();
+
+  // Initialize keyboard shortcuts
+  useKeyboardShortcuts({
+    onOpenCommandPalette: () => setIsCommandPaletteOpen(true),
+    onCloseCommandPalette: () => setIsCommandPaletteOpen(false),
+    enabled: true
+  });
 
   // Bloquear scroll do body quando o menu mobile estiver aberto
   React.useEffect(() => {
@@ -129,6 +139,9 @@ const AppContent = () => {
 
   return (
     <div className="flex h-screen bg-background-light dark:bg-background-dark font-display transition-colors duration-200 text-slate-900 dark:text-slate-100">
+      {/* Command Palette */}
+      <CommandPalette isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)} />
+
       <Sidebar />
 
       {/* Mobile Sidebar Overlay */}
