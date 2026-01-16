@@ -34,8 +34,9 @@ const SidebarContent: React.FC<SidebarContentProps> = ({ locationPath, onItemCli
 
       // 3. Filter only those from monitored contacts
       const count = (messages || []).filter(m => {
+        if (!m.remote_jid) return false;
         const phone = m.remote_jid.split('@')[0].replace('55', '');
-        return monitoredPhones.some(p => p.includes(phone));
+        return monitoredPhones.some(p => p && phone && p.includes(phone));
       }).length;
 
       setReviewCount(count);

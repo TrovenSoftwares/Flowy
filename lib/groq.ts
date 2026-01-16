@@ -12,12 +12,15 @@ export interface GroqExtractionResult {
     shipping?: string;
     client_id: string;
     client_name?: string;
+    seller?: string;
+    dev_code?: string;
+    suggested_category?: string;
 }
 
-const GLOBAL_GROQ_KEY = '';
-const GLOBAL_CLAUDE_KEY = '';
-const GLOBAL_OPENAI_KEY = '';
-const GLOBAL_GEMINI_KEY = ''; // User to provide if available, otherwise it will skip in fallback
+const GLOBAL_GROQ_KEY = import.meta.env.VITE_GROQ_API_KEY;
+const GLOBAL_CLAUDE_KEY = import.meta.env.VITE_CLAUDE_API_KEY;
+const GLOBAL_OPENAI_KEY = import.meta.env.VITE_OPENAI_API_KEY;
+const GLOBAL_GEMINI_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
 
 /**
  * Calls AI APIs to extract financial data from message content.
@@ -37,38 +40,66 @@ export async function extractFinancialDataWithAI(
     const clientList = clients.map(c => c.name).join(', ');
 
     const prompt = `
-    Extract financial data from the following message.
-    Message: "${content}"
+    Você é um assistente financeiro especializado em classificar mensagens.
+    
+    Mensagem: "${content}"
 
-    Lists:
-    - Categories: [${categoryList}]
-    - Accounts: [${accountList}]
-    - Clients: [${clientList}]
+    Listas disponíveis:
+    - Categorias: [${categoryList}]
+    - Contas bancárias: [${accountList}]
+    - Clientes: [${clientList}]
 
-    Instructions:
-    1. Value: Total monetary value.
-    2. Type: 'income' or 'expense'.
-    3. Classification: 'sale' (if it sells a product), 'transaction' (payment/receipt), or 'discard'.
-    4. Category: Exact name from list.
-    5. Description: Short summary.
-    6. Date: YYYY-MM-DD.
-    7. Account: Exact name from list.
-    8. Weight: Numeric only (e.g. 10).
-    9. Shipping: Shipping cost.
-    10. Client: Exact name from Clients list if found.
+    REGRAS DE CLASSIFICAÇÃO:
+    
+    1. "sale" (VENDA): Use quando a mensagem falar sobre:
+       - Venda de produtos, mercadorias ou serviços
+       - Pedidos de clientes, encomendas
+       - Orçamentos, propostas comerciais
+       - Palavras-chave: "venda", "vendeu", "pedido", "encomenda", "cliente comprou"
+    
+    2. "transaction" (RECEITA/DESPESA): Use quando a mensagem falar sobre:
+       - Pagamentos recebidos (PIX, transferência, boleto) ou "Tipo: Receita" = type: "income"
+       - Palavras-chave RECEITA: "entrada", "recebimento", "receita", "entrou", "recebi"
+       - Pagamentos efetuados, gastos, despesas = type: "expense"
+       - Palavras-chave DESPESA: "despesa", "saiu", "pagamento", "saida", "peguei"
+       - Contas a pagar/receber
+       - Palavras-chave GERAIS: "paguei", "gasto", "transferi", "pix"
+    
+    3. "discard" (IGNORAR): Use quando a mensagem:
+       - NÃO contém informações financeiras
+       - É apenas conversa casual, saudações, perguntas
+       - Não menciona valores monetários, vendas ou pagamentos
 
-    Return JSON:
+    EXTRAIA:
+    - value: Valor monetário numérico (ex: "1234.56"). IMPORTANTE: Converta formato BR (1.234,56) para US (1234.56). Se "100002", assuma 100002.00.
+    - type: "income" (dinheiro recebido) ou "expense" (dinheiro pago)
+    - classification: "sale", "transaction" ou "discard"
+    - category_name: Nome exato da lista. Deixe vazio se não encontrar match exato.
+    - suggested_category: Se category_name for vazio, sugira uma categoria contextual (ex: "Receitas", "Produtos").
+    - description: Gere uma descrição completa baseada no contexto, INCLUINDO explicitamente o valor formatado (R$ X,XX). Ex: "Pagamento de R$ 500,00 ref. aluguel", "Recebimento de R$ 1.250,50 de Cliente Y".
+    - date: Extraia qualquer data no formato DD/MM/YY ou DD/MM/YYYY e converta OBRIGATORIAMENTE para YYYY-MM-DD. Ex: "14/12/25" -> "2025-12-14". Ignore a data atual do servidor se houver data na mensagem.
+    - account_name: Nome exato da lista de contas
+    - weight: Peso se mencionado (apenas número)
+    - shipping: Valor do frete se mencionado
+    - client_name: Nome exato do cliente da lista
+    - seller: Nome do vendedor se mencionado na mensagem
+    - dev_code: Código de devolução se mencionado (ex: "Cód. Dev: 123")
+
+    Retorne APENAS JSON:
     {
       "value": "00.00",
-      "type": "income/expense",
-      "classification": "sale/transaction/discard",
-      "category_name": "exact_string_match",
-      "description": "string",
+      "type": "income",
+      "classification": "transaction",
+      "category_name": "",
+      "description": "",
       "date": "YYYY-MM-DD",
-      "account_name": "exact_string_match",
-      "weight": "string",
-      "shipping": "string",
-      "client_name": "exact_string_match"
+      "account_name": "",
+      "weight": "",
+      "shipping": "",
+      "client_name": "",
+      "seller": "",
+      "dev_code": "",
+      "suggested_category": ""
     }
   `;
 

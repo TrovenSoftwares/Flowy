@@ -104,3 +104,27 @@ export const formatPhoneToJid = (phone: string) => {
     }
     return `${clean}@s.whatsapp.net`;
 };
+
+/**
+ * Parses a currency string (R$ 1.234,56) to a float number (1234.56)
+ */
+export const parseCurrency = (val: string | number) => {
+    if (typeof val === 'number') return val;
+    if (!val) return 0;
+    const clean = val.toString().replace('R$', '').replace(/\./g, '').replace(',', '.').trim();
+    const parsed = parseFloat(clean);
+    return isNaN(parsed) ? 0 : parsed;
+};
+
+/**
+ * Masks a number or numeric string as Brazilian Real currency (R$ 0.000,00)
+ */
+export const maskCurrency = (value: string) => {
+    if (!value) return '';
+    const cleanValue = value.replace(/\D/g, '');
+    const numberValue = Number(cleanValue) / 100;
+    return numberValue.toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+    });
+};

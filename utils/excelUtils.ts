@@ -114,7 +114,8 @@ export const downloadExampleTemplate = (type: 'contacts' | 'transactions' | 'sal
             'Valor_Total': '2500.00',
             'Peso_Gramas': '100',
             'Frete': '50.00',
-            'Vendedor': 'WhatsApp IA'
+            'Vendedor': 'WhatsApp IA',
+            'Cód. Dev': 'DV-12345'
         }];
         name = 'exemplo_vendas';
     }

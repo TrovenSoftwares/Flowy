@@ -207,5 +207,29 @@ export const evolutionApi = {
             console.error('Error fetching groups:', error);
             throw error;
         }
+    },
+
+    async sendText(instanceName: string, number: string, text: string) {
+        try {
+            const response = await fetch(`${EVO_URL}/message/sendText/${encodeURIComponent(instanceName)}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': EVO_API_KEY
+                },
+                body: JSON.stringify({
+                    number: number,
+                    text: text,
+                    delay: 1200, // Debounce delay
+                    linkPreview: true
+                })
+            });
+            const data = await response.json();
+            if (!response.ok) throw data;
+            return data;
+        } catch (error) {
+            console.error('Error sending text via Evolution:', error);
+            throw error;
+        }
     }
 };

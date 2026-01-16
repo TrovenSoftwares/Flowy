@@ -5,6 +5,13 @@ import { toast } from 'react-hot-toast';
 import { SkeletonTable, SkeletonCard } from '../components/Skeleton';
 import ConfirmModal from '../components/ConfirmModal';
 import Modal from '../components/Modal';
+import { parseOfx } from '../lib/ofxParser';
+import ImportReviewModal from '../components/ImportReviewModal';
+import Button from '../components/Button';
+import AccountCard from '../components/AccountCard';
+import CategoryItem from '../components/CategoryItem';
+import Card from '../components/Card';
+import { parseCurrency } from '../utils/utils';
 
 const Wallet: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -42,6 +49,11 @@ const Wallet: React.FC = () => {
     color: 'bg-slate-100 text-slate-600',
     parent_id: ''
   });
+
+  // Import States
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importedTransactions, setImportedTransactions] = useState<any[]>([]);
+  const [importLoading, setImportLoading] = useState(false);
 
   const fetchWalletData = useCallback(async () => {
     setLoading(true);
@@ -289,10 +301,60 @@ const Wallet: React.FC = () => {
   };
 
   const resetForms = () => {
-    setNewAccount({ name: '', type: 'Conta Corrente', balance: '0,00', color: 'bg-slate-500', icon: '/img/banks/outro.svg' });
-    setNewCategory({ name: '', budget: '', budget_is_unlimited: false, icon: 'label', color: 'bg-slate-100 text-slate-600', parent_id: '' });
-    setEditingAccountId(null);
     setEditingCategoryId(null);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      try {
+        const trnas = parseOfx(content);
+        if (trnas.length === 0) {
+          toast.error('Nenhuma transação encontrada no arquivo.');
+          return;
+        }
+        setImportedTransactions(trnas);
+        setIsImportModalOpen(true);
+      } catch (err) {
+        toast.error('Erro ao processar arquivo OFX.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = ''; // Reset input
+  };
+
+  const handleConfirmImport = async (finalItems: any[]) => {
+    setSubmitting(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const payload = finalItems.map(item => ({
+        user_id: user?.id,
+        account_id: item.account_id,
+        category_id: item.category_id || null,
+        description: item.description,
+        value: parseFloat(item.value.replace(/\./g, '').replace(',', '.')),
+        type: item.type,
+        date: item.date,
+        status: 'confirmed'
+      }));
+
+      const { error } = await supabase.from('transactions').insert(payload);
+      if (error) throw error;
+
+      toast.success(`${finalItems.length} transações importadas com sucesso!`);
+      setIsImportModalOpen(false);
+      fetchWalletData();
+    } catch (error) {
+      console.error('Import error:', error);
+      toast.error('Erro ao importar transações.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // Override the create handlers to open modal with clear state
@@ -315,20 +377,30 @@ const Wallet: React.FC = () => {
           description="Configure suas contas bancárias e defina categorias de despesas. A nossa IA utilizará essas definições para classificar automaticamente suas mensagens do WhatsApp."
           actions={
             <div className="flex items-center gap-2 sm:gap-3">
-              <button
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={fetchWalletData}
-                className="inline-flex items-center justify-center px-3 sm:px-4 py-2 bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors gap-2 shadow-sm active:scale-95"
+                className="!size-10 !p-0 shadow-sm"
               >
                 <span className="material-symbols-outlined text-[20px]">refresh</span>
-              </button>
-              <button
+              </Button>
+
+              <label className="inline-flex items-center justify-center px-4 py-2.5 bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-900 dark:text-white hover:bg-slate-50 dark:hover:bg-slate-800 transition-all gap-2 shadow-sm active:scale-95 cursor-pointer">
+                <span className="material-symbols-outlined text-[20px]">upload_file</span>
+                <span className="hidden sm:inline">Importar Extrato</span>
+                <span className="sm:hidden">OFX</span>
+                <input type="file" accept=".ofx" onChange={handleFileUpload} className="hidden" />
+              </label>
+
+              <Button
                 onClick={() => setIsAccountModalOpen(true)}
-                className="inline-flex items-center justify-center px-3 sm:px-4 py-2 bg-primary rounded-lg text-sm font-bold text-white hover:bg-primary transition-colors gap-2 shadow-sm shadow-primary/30 active:scale-95 whitespace-nowrap"
+                leftIcon={<span className="material-symbols-outlined text-[20px]">add</span>}
+                className="shadow-primary/30"
               >
-                <span className="material-symbols-outlined text-[20px]">add</span>
                 <span className="hidden sm:inline">Nova Conta</span>
                 <span className="sm:hidden">Conta</span>
-              </button>
+              </Button>
             </div>
           }
         />
@@ -343,12 +415,12 @@ const Wallet: React.FC = () => {
                 <span className="material-symbols-outlined text-primary filled">account_balance_wallet</span>
                 Minhas Contas
               </h2>
-              <div className="flex flex-col gap-1.5 sm:gap-2 rounded-xl p-4 sm:p-6 bg-white dark:bg-slate-850 border border-[#e7edf3] dark:border-slate-800 shadow-sm transition-all text-right">
+              <Card className="flex flex-col gap-1.5 text-right !p-4">
                 <p className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs font-bold uppercase tracking-wider">Saldo Total</p>
                 <p className="text-xl sm:text-2xl font-bold tracking-tight text-emerald-500">
                   R$ {Math.abs(totalBalance).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
-              </div>
+              </Card>
             </div>
 
             <div className="grid gap-4">
@@ -691,150 +763,19 @@ const Wallet: React.FC = () => {
         type="danger"
       />
 
+      {/* Import Review Modal */}
+      <ImportReviewModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        transactions={importedTransactions}
+        categories={categories}
+        accounts={accounts.map(a => ({ value: a.id, label: a.name, icon: 'account_balance' }))}
+        onConfirm={handleConfirmImport}
+        submitting={submitting}
+      />
+
     </div>
   );
 };
-
-// Subcomponents helper (Updated types for safety)
-const AccountCard = ({ name, type, balance, logo, logoIcon, color, update, trend, isNegative, progress, onEdit, onDelete }: any) => (
-  <div className="flex flex-col gap-1.5 sm:gap-2 rounded-xl p-4 sm:p-6 bg-white dark:bg-slate-850 border border-[#e7edf3] dark:border-slate-800 shadow-sm group hover:border-primary/30 transition-all relative overflow-hidden min-w-0">
-    <div className="flex items-start justify-between mb-1">
-      <div className="flex items-center gap-3 min-w-0">
-        <div className={`size-10 sm:size-12 rounded-2xl ${color} flex items-center justify-center text-white shrink-0 font-bold text-lg sm:text-xl shadow-lg shadow-black/10 border border-white/20 overflow-hidden relative group-hover:scale-105 transition-transform`}>
-          {logoIcon && logoIcon.startsWith('/') ? (
-            <img
-              src={logoIcon}
-              alt={name}
-              className="size-full object-cover"
-              onError={(e) => {
-                (e.target as any).style.display = 'none';
-                (e.target as any).parentElement.innerHTML = `<span class="material-symbols-outlined text-white">${logoIcon.includes('/') ? 'account_balance' : logoIcon}</span>`;
-              }}
-            />
-          ) : logoIcon ? (
-            <span className="material-symbols-outlined text-white">{logoIcon}</span>
-          ) : (
-            <span className="font-black text-white">{logo}</span>
-          )}
-          <div className="absolute inset-0 bg-gradient-to-tr from-black/20 to-transparent pointer-events-none"></div>
-        </div>
-        <div className="min-w-0">
-          <p className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs font-bold uppercase tracking-wider truncate">{type}</p>
-          <p className="text-sm sm:text-lg font-bold text-slate-900 dark:text-white truncate">{name}</p>
-        </div>
-      </div>
-      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-        <button
-          onClick={(e) => { e.stopPropagation(); onEdit(); }}
-          className="p-1.5 hover:bg-[#e7edf3] dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-primary transition-colors"
-        >
-          <span className="material-symbols-outlined text-[18px]">edit</span>
-        </button>
-        <button
-          onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          className="p-1.5 hover:bg-[#e7edf3] dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-rose-500 transition-colors"
-        >
-          <span className="material-symbols-outlined text-[18px]">delete</span>
-        </button>
-      </div>
-    </div>
-
-    <div className="mt-2">
-      <p className={`text-xl sm:text-2xl font-bold tracking-tight whitespace-nowrap ${isNegative ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-white'}`}>
-        {isNegative ? '-' : ''} {"R$\u00A0"}{balance.replace('-', '')}
-      </p>
-      <p className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs font-bold flex items-center gap-1.5 mt-0.5 sm:mt-1">
-        <span className="material-symbols-outlined text-sm sm:text-base">sync</span> {update}
-      </p>
-    </div>
-  </div>
-);
-
-const CategoryItem = ({ id, name, icon, iconColor, spent, budget, percentage, subcategories, iaReady, warning, critical, isInfinite, onEdit, onDelete }: any) => (
-  <div className="p-4 hover:bg-[#fcfdfd] dark:hover:bg-slate-800/50 transition-colors group relative">
-    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 z-10">
-      <button
-        onClick={() => onEdit({ id, name, icon, color: iconColor, budget: budget?.toString() || '', budget_is_unlimited: isInfinite, parent_id: null })}
-        className="p-1.5 hover:bg-[#e7edf3] dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-primary transition-colors"
-      >
-        <span className="material-symbols-outlined text-[18px]">edit</span>
-      </button>
-      <button
-        onClick={() => onDelete({ id, type: 'category' })}
-        className="p-1.5 hover:bg-[#e7edf3] dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-rose-500 transition-colors"
-      >
-        <span className="material-symbols-outlined text-[18px]">delete</span>
-      </button>
-    </div>
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 pr-10 sm:pr-14">
-      <div className="flex items-center gap-3">
-        <div className={`size-10 rounded-lg ${iconColor} flex items-center justify-center shrink-0`}>
-          <span className="material-symbols-outlined">{icon}</span>
-        </div>
-        <div className="min-w-0">
-          <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate">{name}</h4>
-          <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-xs text-slate-500 whitespace-nowrap">{subcategories ? subcategories.length : 0} Subcategorias</span>
-            {iaReady && (
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 flex items-center gap-1 whitespace-nowrap">
-                <span className="material-symbols-outlined text-[10px] filled">auto_awesome</span> IA Ready
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-      <div className="text-left sm:text-right">
-        <p className="text-sm font-bold text-slate-900 dark:text-white">
-          {"R$\u00A0"}{spent.replace('-', '')} <span className="text-slate-500 font-normal text-xs">/ {isInfinite ? '∞' : `R$\u00A0${Number(budget || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0 })}`}</span>
-        </p>
-        {!isInfinite && (
-          <p className={`text-xs mt-0.5 font-medium ${critical ? 'text-red-600 dark:text-red-400' : warning ? 'text-amber-600 dark:text-amber-400' : 'text-slate-500'}`}>
-            {percentage}% utilizado
-          </p>
-        )}
-        {isInfinite && <p className="text-xs mt-0.5 font-medium text-slate-400">Sem limite</p>}
-      </div>
-    </div>
-    {/* Only show progress bar if not infinite */}
-    {!isInfinite && (
-      <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden mb-3">
-        <div
-          className={`h-full rounded-full transition-all duration-500 ${critical ? 'bg-red-500' : warning ? 'bg-amber-500' : 'bg-primary'}`}
-          style={{ width: `${Math.min(percentage, 100)}%` }}
-        ></div>
-      </div>
-    )}
-
-    {/* Subcategories items */}
-    {subcategories && subcategories.length > 0 && (
-      <div className="mt-2 ml-10 space-y-1">
-        {subcategories.map((sub: any) => (
-          <div key={sub.id} className="flex items-center justify-between py-2 border-t border-[#e7edf3] dark:border-slate-800 animate-in slide-in-from-left-2 transition-colors hover:bg-[#fcfdfd] dark:hover:bg-slate-800/50 rounded-lg px-2">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-slate-400 text-sm">subdirectory_arrow_right</span>
-              <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{sub.name}</span>
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="text-sm font-bold text-slate-900 dark:text-white">R$ {sub.spent.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => onEdit({
-                    ...sub,
-                    budget: sub.budget?.toString() || '',
-                    budget_is_unlimited: sub.budget_is_unlimited === true
-                  })}
-                  className="p-1.5 text-slate-400 hover:text-primary transition-colors hover:bg-white dark:hover:bg-slate-700 rounded-lg"
-                >
-                  <span className="material-symbols-outlined text-[18px]">edit</span>
-                </button>
-                <button onClick={() => onDelete(sub)} className="p-1.5 text-slate-400 hover:text-rose-500 transition-colors hover:bg-white dark:hover:bg-slate-700 rounded-lg"><span className="material-symbols-outlined text-[18px]">delete</span></button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    )}
-  </div>
-);
 
 export default Wallet;

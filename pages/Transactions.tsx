@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import PageHeader from '../components/PageHeader';
 import CustomSelect from '../components/CustomSelect';
 import ConfirmModal from '../components/ConfirmModal';
@@ -29,6 +29,7 @@ import {
 
 const Transactions: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [stats, setStats] = useState({
@@ -123,6 +124,14 @@ const Transactions: React.FC = () => {
       supabase.removeChannel(channel);
     };
   }, [fetchTransactions]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const idParam = params.get('id');
+    if (idParam) {
+      setFilters(prev => ({ ...prev, search: idParam }));
+    }
+  }, [location.search]);
 
   const filteredTransactions = transactions.filter(t => {
     const searchMatch = !filters.search ||
@@ -543,15 +552,15 @@ const Transactions: React.FC = () => {
       <Card noPadding>
         <Table>
           <TableHeader>
-            <TableHeadCell width="48px" className="text-center">
+            <TableHeadCell width="48px" className="text-center hidden sm:table-cell">
               <input className="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-800 text-primary focus:ring-primary/50 size-4" type="checkbox" />
             </TableHeadCell>
             <TableHeadCell>Descrição / Conta</TableHeadCell>
-            <TableHeadCell>Categoria</TableHeadCell>
-            <TableHeadCell>Contato</TableHeadCell>
-            <TableHeadCell align="center">Data</TableHeadCell>
+            <TableHeadCell className="hidden lg:table-cell">Categoria</TableHeadCell>
+            <TableHeadCell className="hidden md:table-cell">Contato</TableHeadCell>
+            <TableHeadCell align="center" className="hidden sm:table-cell">Data</TableHeadCell>
             <TableHeadCell align="right">Valor</TableHeadCell>
-            <TableHeadCell align="center">Status</TableHeadCell>
+            <TableHeadCell align="center" className="hidden xl:table-cell">Status</TableHeadCell>
             <TableHeadCell align="right">Ações</TableHeadCell>
           </TableHeader>
           <TableBody>
@@ -616,7 +625,7 @@ const TransactionRow = ({ tx, onEdit, onDelete }: any) => {
       {isSpecial && (
         <div className={`absolute left-0 top-0 bottom-0 w-[5px] ${tx.categories?.name === 'Devolução' ? 'bg-rose-500' : 'bg-amber-500'}`} />
       )}
-      <TableCell align="center">
+      <TableCell className="hidden sm:table-cell text-center">
         <input className="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-800 text-primary focus:ring-primary/50 size-4" type="checkbox" />
       </TableCell>
       <TableCell>
@@ -651,7 +660,7 @@ const TransactionRow = ({ tx, onEdit, onDelete }: any) => {
           </div>
         </div>
       </TableCell>
-      <TableCell>
+      <TableCell className="hidden lg:table-cell">
         {(() => {
           const isDevolucao = tx.categories?.name === 'Devolução';
           const isCheque = tx.description?.toLowerCase().includes('cheque devolvido');
@@ -677,19 +686,19 @@ const TransactionRow = ({ tx, onEdit, onDelete }: any) => {
           );
         })()}
       </TableCell>
-      <TableCell>
+      <TableCell className="hidden md:table-cell">
         <div className="flex items-center gap-2 text-xs font-bold text-slate-500 max-w-[200px]">
           {tx.contacts?.name && <span className="material-symbols-outlined text-[16px] shrink-0">person</span>}
           <span className="truncate">{tx.contacts?.name || '---'}</span>
         </div>
       </TableCell>
-      <TableCell align="center" className="text-xs font-bold text-slate-500 whitespace-nowrap">
+      <TableCell align="center" className="text-xs font-bold text-slate-500 whitespace-nowrap hidden sm:table-cell">
         {formatDate(tx.date)}
       </TableCell>
       <TableCell align="right" className={`text-sm font-bold whitespace-nowrap ${tx.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
         {tx.type === 'income' ? '+' : '-'} {"R$\u00A0"}{Number(tx.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
       </TableCell>
-      <TableCell align="center">
+      <TableCell align="center" className="hidden xl:table-cell">
         <div className="flex justify-center">
           {tx.status === 'confirmed' ? (
             <span className="size-6 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">

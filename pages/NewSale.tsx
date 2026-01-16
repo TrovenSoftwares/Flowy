@@ -37,6 +37,7 @@ const NewSale: React.FC = () => {
     shipping: '',
     seller: '',
     code: '',
+    dev_code: '',
     is_ai: false
   });
 
@@ -79,6 +80,7 @@ const NewSale: React.FC = () => {
             shipping: data.shipping?.toString() || '',
             seller: data.seller || '',
             code: data.code || '',
+            dev_code: data.dev_code || '',
             is_ai: data.is_ai || false
           });
         }
@@ -105,12 +107,15 @@ const NewSale: React.FC = () => {
 
     // Only add optional fields if they have values
     if (formData.client_id) payload.client_id = formData.client_id;
+    if (formData.account_id) payload.account_id = formData.account_id;
     if (formData.weight) payload.weight = parseFloat(formData.weight) || null;
     if (formData.code) {
       payload.code = formData.code;
     } else if (!isEdit) {
       payload.code = `MAN-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
     }
+
+    if (formData.dev_code) payload.dev_code = formData.dev_code;
 
 
     let result;
@@ -272,6 +277,15 @@ const NewSale: React.FC = () => {
                   leftIcon={<span className="material-symbols-outlined text-slate-400 text-[20px]">tag</span>}
                 />
 
+                {/* Dev Code */}
+                <Input
+                  label="Cód. Dev"
+                  placeholder="Código de Devolução"
+                  value={formData.dev_code}
+                  onChange={(e) => setFormData({ ...formData, dev_code: e.target.value })}
+                  leftIcon={<span className="material-symbols-outlined text-amber-500 text-[20px]">assignment_return</span>}
+                />
+
                 <InputMask
                   label={<>Valor Total (R$) <span className="text-red-500">*</span></>}
                   mask={MASKS.CURRENCY}
@@ -304,6 +318,18 @@ const NewSale: React.FC = () => {
                   rightIcon={<span className="material-symbols-outlined text-slate-400 text-sm">local_shipping</span>}
                   className="font-bold text-lg"
                 />
+
+                {/* Account Selection */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-slate-900 dark:text-white text-sm font-medium">Conta Bancária / Destino</label>
+                  <CustomSelect
+                    value={formData.account_id}
+                    onChange={(val) => setFormData({ ...formData, account_id: val })}
+                    placeholder="Selecione a conta de destino"
+                    icon="account_balance"
+                    options={accounts.map(a => ({ value: a.id, label: a.name }))}
+                  />
+                </div>
 
                 {/* Seller Selection - Hidden for new manual sales as requested */}
                 {isEdit && (

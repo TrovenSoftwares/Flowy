@@ -2,6 +2,18 @@
 
 Todas as mudanças notáveis neste projeto serão documentadas neste arquivo.
 
+## [1.2.3] - 2026-01-16
+### Adicionado
+- **Consultor Flowy AI**: Widget inteligente no Dashboard com insights financeiros em tempo real.
+- **Reconciliação Bancária OFX/CSV**: Importação direta de extratos com sugestão de categorias via IA.
+- **Componentização Global**: Extração de `AccountCard` e `CategoryItem` para uso em todo o sistema.
+
+### Alterado
+- **Padronização Visual**: Refatoração completa das páginas de Vendas, Carteira e Revisão usando componentes premium.
+- **Centralização de Lógica**: Unificação do tratamento de moedas e datas em utilitários globais.
+
+---
+
 ## [1.2.1] - 2026-01-15
 ### Adicionado
 - **Atalhos de Teclado**: Sistema completo de navegação rápida via teclado.

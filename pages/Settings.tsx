@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { toast } from 'react-hot-toast';
 import PageHeader from '../components/PageHeader';
@@ -9,11 +9,14 @@ import { WhatsAppIcon } from '../components/BrandedIcons';
 import ConfirmModal from '../components/ConfirmModal';
 import Modal from '../components/Modal';
 import Input from '../components/Input';
+import InputMask from '../components/InputMask';
 import Button from '../components/Button';
+import { MASKS } from '../utils/utils';
 import { SkeletonCard, SkeletonTable } from '../components/Skeleton';
 
 const Settings: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('perfil');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -27,16 +30,11 @@ const Settings: React.FC = () => {
     email: '',
     phone: '',
     role: '',
-    avatar_url: ''
+    avatar_url: '',
+    company_name: '',
+    cnpj: ''
   });
 
-  const [aiConfig, setAiConfig] = useState<any>({
-    groqKey: '',
-    openAIKey: '',
-    anthropicKey: '',
-    geminiKey: '',
-    whatsappInstance: null
-  });
 
   // WhatsApp States
   const [instanceName, setInstanceName] = useState<string | null>(null);
@@ -50,6 +48,10 @@ const Settings: React.FC = () => {
   const [systemVersion, setSystemVersion] = useState({ version: '...', description: 'Carregando...' });
   const [changelogs, setChangelogs] = useState<any[]>([]);
   const [loadingChangelogs, setLoadingChangelogs] = useState(false);
+  const [aiLogs, setAiLogs] = useState<any[]>([]);
+  const [loadingAiLogs, setLoadingAiLogs] = useState(false);
+  const [selectedLog, setSelectedLog] = useState<any>(null);
+  const [isLogModalOpen, setIsLogModalOpen] = useState(false);
 
   // Webhook Constants (Same as IntegrationConfig)
   const DEFAULT_WEBHOOK_URL = 'https://workflows.troven.com.br/webhook/financeiro-ai';
@@ -61,6 +63,7 @@ const Settings: React.FC = () => {
   useEffect(() => {
     fetchSettings();
     fetchChangelogs();
+    fetchAiLogs();
 
     // Check for tab parameter in URL
     const params = new URLSearchParams(location.search);
@@ -81,24 +84,11 @@ const Settings: React.FC = () => {
         email: user.email || '',
         phone: user.phone || '',
         role: 'Administrador',
-        avatar_url: user.user_metadata?.avatar_url || ''
       });
-
-      // Fetch System Version
-      const { data: versionData } = await supabase
-        .from('system_versions')
-        .select('version, description')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (versionData) {
-        setSystemVersion(versionData);
-      }
 
       const { data: settings, error } = await supabase
         .from('user_settings')
-        .select('ai_config, profile_data')
+        .select('profile_data')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -111,15 +101,10 @@ const Settings: React.FC = () => {
         .maybeSingle();
 
       if (settings) {
-        if (settings.ai_config) {
-          setAiConfig(prev => ({ ...prev, ...settings.ai_config }));
-          // Prioritize instance table, fallback to settings if not found (migration)
-          if (instanceData?.name) {
-            setInstanceName(instanceData.name);
-            setStatus(instanceData.status as any || 'closed');
-          } else if (settings.ai_config.whatsappInstance) {
-            setInstanceName(settings.ai_config.whatsappInstance);
-          }
+        // Load instances from instances table (not ai_config)
+        if (instanceData?.name) {
+          setInstanceName(instanceData.name);
+          setStatus(instanceData.status as any || 'closed');
         }
         if (settings.profile_data) {
           setProfile(prev => ({
@@ -190,6 +175,108 @@ const Settings: React.FC = () => {
     }
   };
 
+  const fetchAiLogs = async () => {
+    setLoadingAiLogs(true);
+    try {
+      const { data: messages, error } = await supabase
+        .from('whatsapp_messages')
+        .select('*')
+        .eq('status', 'ignored') // Mostrar apenas mensagens ignoradas
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+
+      const { data: contacts } = await supabase
+        .from('contacts')
+        .select('name, whatsapp_id, phone');
+
+      const mappedLogs = (messages || []).map(m => {
+        const isGroup = m.remote_jid?.includes('@g.us');
+
+        // Prioridade 1: sender_name salvo no banco
+        if (m.sender_name) {
+          return {
+            ...m,
+            contact_name: m.sender_name
+          };
+        }
+
+        // Para grupos, usar o push_name ou extrair do jid
+        if (isGroup) {
+          return {
+            ...m,
+            contact_name: m.push_name || m.participant_name || 'Grupo'
+          };
+        }
+
+        // Para contatos individuais - melhorar matching por últimos dígitos
+        const jidClean = m.remote_jid?.split('@')[0].replace(/\D/g, '') || '';
+        const jidLast9 = jidClean.slice(-9);
+        const jidLast8 = jidClean.slice(-8);
+
+        const contact = contacts?.find(c => {
+          if (c.whatsapp_id === m.remote_jid) return true;
+          if (c.phone) {
+            const pClean = c.phone.replace(/\D/g, '');
+            const pLast9 = pClean.slice(-9);
+            const pLast8 = pClean.slice(-8);
+            // Match por últimos 8-9 dígitos (ignora DDI e DDD)
+            return pLast9 === jidLast9 || pLast8 === jidLast8;
+          }
+          return false;
+        });
+
+        return {
+          ...m,
+          contact_name: contact?.name || m.push_name || m.remote_jid?.split('@')[0] || 'Desconhecido'
+        };
+      });
+
+      setAiLogs(mappedLogs);
+    } catch (error) {
+      console.error('Error loading AI logs:', error);
+    } finally {
+      setLoadingAiLogs(false);
+    }
+  };
+
+  const handleViewTransaction = async (msgId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('id')
+        .contains('ai_metadata', { whatsapp_message_id: msgId })
+        .maybeSingle();
+
+      if (error) throw error;
+      if (data) {
+        navigate(`/transactions?id=${data.id}`);
+      } else {
+        toast.error('Transação não encontrada ou removida.');
+      }
+    } catch (error) {
+      console.error('Error finding transaction:', error);
+      toast.error('Erro ao localizar transação.');
+    }
+  };
+
+  const handleTeachIA = async (msgId: string) => {
+    try {
+      const { error } = await supabase
+        .from('whatsapp_messages')
+        .update({ status: 'pending', ignore_reason: null })
+        .eq('id', msgId);
+
+      if (error) throw error;
+      toast.success('Mensagem restaurada para revisão.');
+      fetchAiLogs();
+    } catch (error) {
+      console.error('Error teaching IA:', error);
+      toast.error('Erro ao atualizar mensagem.');
+    }
+  };
+
   const handleSaveProfile = async () => {
     setSaving(true);
     try {
@@ -218,29 +305,7 @@ const Settings: React.FC = () => {
     }
   };
 
-  const handleSaveAI = async () => {
-    setSaving(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('No user');
-
-      const { error } = await supabase
-        .from('user_settings')
-        .upsert({
-          user_id: user.id,
-          ai_config: aiConfig,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'user_id' });
-
-      if (error) throw error;
-      toast.success('Configurações de IA salvas!');
-    } catch (error) {
-      console.error(error);
-      toast.error('Erro ao salvar configurações de IA.');
-    } finally {
-      setSaving(false);
-    }
-  };
+  // handleSaveAI removed - ai_config no longer used
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
@@ -321,7 +386,8 @@ const Settings: React.FC = () => {
           <div className="bg-white dark:bg-slate-900 rounded-2xl p-2 shadow-sm border border-slate-200 dark:border-slate-800">
             {renderTabButton('perfil', 'Meu Perfil', 'account_circle')}
             {renderTabButton('whatsapp', 'WhatsApp', 'chat', false)}
-            {renderTabButton('ia', 'Integração IA', 'smart_toy', true)}
+            {renderTabButton('ai_logs', 'Logs da IA', 'list_alt', true)}
+            {renderTabButton('ia', 'Integração IA', 'smart_toy', false)}
             {renderTabButton('seguranca', 'Segurança', 'lock')}
             {renderTabButton('notificacoes', 'Notificações', 'notifications')}
             {renderTabButton('sistema', 'Sistema', 'settings_suggest')}
@@ -441,13 +507,37 @@ const Settings: React.FC = () => {
                       </div>
 
                       <div className="space-y-2 md:col-span-2">
-                        <Input
+                        <InputMask
                           label="Telefone / WhatsApp"
                           value={profile.phone}
-                          onChange={e => setProfile({ ...profile, phone: e.target.value })}
-                          placeholder="+55 (00) 00000-0000"
+                          onAccept={val => setProfile({ ...profile, phone: val })}
+                          mask={MASKS.PHONE}
+                          placeholder="(00) 00000-0000"
                           leftIcon={<span className="material-symbols-outlined text-[20px]">call</span>}
-                          helperText="Usado para notificações de segurança e recuperação de conta."
+                          helperText="Usado para notificações de segurança e identificação da conta."
+                        />
+                      </div>
+
+                      <div className="h-px bg-slate-100 dark:bg-slate-800 md:col-span-2 my-2"></div>
+
+                      <div className="space-y-2">
+                        <Input
+                          label="Nome da Empresa"
+                          value={profile.company_name}
+                          onChange={e => setProfile({ ...profile, company_name: e.target.value })}
+                          placeholder="Nome fantasia da sua empresa"
+                          leftIcon={<span className="material-symbols-outlined text-[20px]">store</span>}
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <InputMask
+                          label="CNPJ"
+                          value={profile.cnpj}
+                          onAccept={val => setProfile({ ...profile, cnpj: val })}
+                          mask={MASKS.CNPJ}
+                          placeholder="00.000.000/0000-00"
+                          leftIcon={<span className="material-symbols-outlined text-[20px]">corporate_fare</span>}
                         />
                       </div>
                     </div>
@@ -694,7 +784,216 @@ const Settings: React.FC = () => {
             </div>
           )}
 
-          {/* System Info & Changelogs */}
+          {/* AI Logs Section */}
+          {activeTab === 'ai_logs' && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 shadow-sm">
+                <div className="flex items-center justify-between mb-8">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary/10 rounded-xl">
+                      <WhatsAppIcon className="size-6 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900 dark:text-white">Logs de Processamento</h3>
+                      <p className="text-xs text-slate-500">Histórico de mensagens lidas e classificadas pela IA</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={fetchAiLogs}
+                    className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-slate-400 group"
+                  >
+                    <span className={`material-symbols-outlined text-[20px] ${loadingAiLogs ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`}>refresh</span>
+                  </button>
+                </div>
+
+                {loadingAiLogs ? (
+                  <div className="py-20 flex flex-col items-center justify-center gap-4">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    <p className="text-slate-400 text-sm">Escaneando logs...</p>
+                  </div>
+                ) : aiLogs.length === 0 ? (
+                  <div className="py-20 text-center">
+                    <span className="material-symbols-outlined text-5xl text-slate-200 mb-4">history_toggle_off</span>
+                    <p className="text-slate-500 font-medium">Nenhum log de processamento encontrado.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className="border-b border-slate-100 dark:border-slate-800 text-[10px] uppercase font-bold text-slate-400">
+                          <th className="pb-4 px-4">Data/Hora</th>
+                          <th className="pb-4 px-4">Origem</th>
+                          <th className="pb-4 px-4">Mensagem</th>
+                          <th className="pb-4 px-4">Resultado</th>
+                          <th className="pb-4 px-4 text-right">Ação</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
+                        {aiLogs.map((log) => (
+                          <tr key={log.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                            <td className="py-4 px-4 font-mono text-[10px] text-slate-400">
+                              {new Date(log.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                            </td>
+                            <td className="py-4 px-4">
+                              <div className="flex flex-col">
+                                <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                                  {log.contact_name}
+                                </span>
+                                <span className="text-[10px] text-slate-400">{log.instance_name}</span>
+                              </div>
+                            </td>
+                            <td className="py-4 px-4">
+                              <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 max-w-[300px]" title={log.content}>
+                                {log.content}
+                              </p>
+                            </td>
+                            <td className="py-4 px-4">
+                              {log.status === 'processed' ? (
+                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
+                                  <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                                  Processado
+                                </span>
+                              ) : log.status === 'pending' ? (
+                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 text-[10px] font-bold uppercase tracking-wider">
+                                  <span className="material-symbols-outlined text-[14px]">hourglass_empty</span>
+                                  Aguardando Revisão
+                                </span>
+                              ) : (
+                                <div className="flex flex-col gap-1">
+                                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-[10px] font-bold uppercase tracking-wider w-fit">
+                                    <span className="material-symbols-outlined text-[14px]">block</span>
+                                    Ignorado
+                                  </span>
+                                  {log.ignore_reason && (
+                                    <span className="text-[9px] text-slate-400 italic">Motivo: {log.ignore_reason}</span>
+                                  )}
+                                </div>
+                              )}
+                            </td>
+                            <td className="py-4 px-4 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <button
+                                  onClick={() => {
+                                    setSelectedLog(log);
+                                    setIsLogModalOpen(true);
+                                  }}
+                                  className="p-1.5 text-slate-400 hover:text-primary transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700 rounded-lg shadow-sm bg-white dark:bg-slate-800"
+                                  title="Ver Detalhes JSON"
+                                >
+                                  <span className="material-symbols-outlined text-[18px]">code</span>
+                                </button>
+
+                                {log.status === 'processed' && (
+                                  <button
+                                    onClick={() => handleViewTransaction(log.id)}
+                                    className="p-1.5 text-slate-400 hover:text-emerald-500 transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700 rounded-lg shadow-sm bg-white dark:bg-slate-800"
+                                    title="Ver Transação"
+                                  >
+                                    <span className="material-symbols-outlined text-[18px]">receipt_long</span>
+                                  </button>
+                                )}
+
+                                {log.status === 'pending' && (
+                                  <button
+                                    onClick={() => navigate('/review')}
+                                    className="p-1.5 text-slate-400 hover:text-primary transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700 rounded-lg shadow-sm bg-white dark:bg-slate-800"
+                                    title="Ir para Central de Revisão"
+                                  >
+                                    <span className="material-symbols-outlined text-[18px]">fact_check</span>
+                                  </button>
+                                )}
+
+                                {(log.status === 'error' || log.status === 'discarded') && (
+                                  <button
+                                    onClick={() => handleTeachIA(log.id)}
+                                    className="p-1.5 text-slate-400 hover:text-amber-500 transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700 rounded-lg shadow-sm bg-white dark:bg-slate-800"
+                                    title="Ensinar IA (Mover para Revisão)"
+                                  >
+                                    <span className="material-symbols-outlined text-[18px]">psychology</span>
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Tips for better IA learning */}
+              <div className="bg-amber-50 dark:bg-amber-900/10 rounded-2xl p-6 border border-amber-100 dark:border-amber-900/30 flex items-start gap-4">
+                <div className="p-2 bg-amber-100 dark:bg-amber-900/50 rounded-xl text-amber-600 dark:text-amber-400">
+                  <span className="material-symbols-outlined">lightbulb</span>
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-amber-900 dark:text-amber-200">Como o "Ensinar IA" funciona?</h4>
+                  <p className="text-xs text-amber-800/70 dark:text-amber-400/70 mt-1 leading-relaxed">
+                    Se você notar que uma mensagem financeira válida foi descartada, clique em **"Ensinar IA"**.
+                    A mensagem voltará para a sua **Central de Revisão**, onde você poderá aprová-la manualmente.
+                    Isso ajuda nosso modelo a entender melhor o padrão das suas conversas no futuro.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Log Detail Modal */}
+          <Modal
+            isOpen={isLogModalOpen}
+            onClose={() => setIsLogModalOpen(false)}
+            title="Detalhes da Mensagem (Payload)"
+            size="lg"
+          >
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-3">
+                  <div className="size-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                    <span className="material-symbols-outlined">chat</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">{selectedLog?.contact_name || 'Desconhecido'}</p>
+                    <p className="text-[10px] text-slate-400 font-mono">{selectedLog?.remote_jid}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs font-bold text-slate-500">{new Date(selectedLog?.created_at).toLocaleString('pt-BR')}</p>
+                  <p className="text-[10px] text-slate-400">{selectedLog?.instance_name}</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider px-1">Mensagem Original</p>
+                <div className="p-4 bg-emerald-50/50 dark:bg-emerald-900/10 rounded-xl border border-emerald-100 dark:border-emerald-900/30">
+                  <p className="text-sm text-slate-800 dark:text-slate-200 italic">"{selectedLog?.content}"</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider px-1">Dados Brutos (JSON)</p>
+                <div className="relative group">
+                  <pre className="p-4 bg-slate-950 text-emerald-400 text-[10px] font-mono rounded-xl overflow-auto max-h-[300px] border border-slate-800 custom-scrollbar">
+                    {JSON.stringify(selectedLog?.raw_data, null, 2)}
+                  </pre>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(JSON.stringify(selectedLog?.raw_data, null, 2));
+                      toast.success('JSON copiado!');
+                    }}
+                    className="absolute top-2 right-2 p-2 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">content_copy</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="pt-4 flex justify-end">
+                <Button onClick={() => setIsLogModalOpen(false)}>Fechar Janela</Button>
+              </div>
+            </div>
+          </Modal>
+
           {activeTab === 'sistema' && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-8 shadow-sm relative overflow-hidden">
@@ -804,14 +1103,7 @@ const Settings: React.FC = () => {
             const { error: dbError } = await supabase.from('instances').delete().eq('name', instanceName).eq('user_id', user.id);
             if (dbError) throw dbError;
 
-            // 2. Remove from settings
-            await supabase.from('user_settings').upsert({
-              user_id: user.id,
-              ai_config: { ...aiConfig, whatsappInstance: null },
-              updated_at: new Date().toISOString()
-            }, { onConflict: 'user_id' });
-
-            // 3. Delete from Evolution API
+            // 2. Delete from Evolution API
             try { await evolutionApi.deleteInstance(instanceName); } catch (e) {
               console.warn('Failed to delete from Evolution (might already be deleted)', e);
             }
@@ -889,15 +1181,6 @@ const Settings: React.FC = () => {
                   }, { onConflict: 'user_id,name' });
 
                   if (dbError) throw dbError;
-
-                  await supabase.from('user_settings').upsert({
-                    user_id: user.id,
-                    ai_config: {
-                      ...aiConfig,
-                      whatsappInstance: newInstanceName
-                    },
-                    updated_at: new Date().toISOString()
-                  }, { onConflict: 'user_id' });
 
                   setInstanceName(newInstanceName);
                   setIsInstanceModalOpen(false);

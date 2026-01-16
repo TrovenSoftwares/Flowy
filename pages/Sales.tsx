@@ -6,7 +6,7 @@ import ConfirmModal from '../components/ConfirmModal';
 import Modal from '../components/Modal';
 import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
-import { formatDate } from '../utils/utils';
+import { formatDate, parseCurrency } from '../utils/utils';
 import { toast } from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -15,9 +15,15 @@ import { PdfIcon, ExcelIcon, ImportIcon, WeightIcon } from '../components/Brande
 import StatCard from '../components/StatCard';
 import { SkeletonTable } from '../components/Skeleton';
 import Pagination from '../components/Pagination';
+import Button from '../components/Button';
+import {
+  Table, TableHeader, TableHeadCell, TableBody,
+  TableRow, TableCell, TableLoadingState, TableEmptyState
+} from '../components/Table';
 
 const Sales: React.FC = () => {
   const navigate = useNavigate();
+  const abortControllerRef = React.useRef<AbortController | null>(null);
   const [loading, setLoading] = useState(true);
   const [sales, setSales] = useState<any[]>([]);
   const [stats, setStats] = useState({
@@ -41,14 +47,17 @@ const Sales: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const fetchSales = useCallback(async () => {
+  const fetchSales = useCallback(async (signal?: AbortSignal) => {
+    // Prevent multiple simultaneous fetches
+    if (signal?.aborted) return;
+
     setLoading(true);
     try {
       // Busca separada para contornar ausência de FK no schema
       const [salesRes, contactsRes, accountsRes] = await Promise.all([
-        supabase.from('sales').select('*').order('date', { ascending: false }),
-        supabase.from('contacts').select('id, name, photo_url, phone'),
-        supabase.from('accounts').select('id, name, color, icon')
+        supabase.from('sales').select('*').order('date', { ascending: false }).abortSignal(signal!),
+        supabase.from('contacts').select('id, name, photo_url, phone').abortSignal(signal!),
+        supabase.from('accounts').select('id, name, color, icon').abortSignal(signal!)
       ]);
 
       if (salesRes.error) throw salesRes.error;
@@ -78,26 +87,44 @@ const Sales: React.FC = () => {
       });
 
     } catch (error: any) {
+      if (error.name === 'AbortError' || error.message?.includes('aborted')) {
+        return; // Silent cancellation
+      }
       console.error('Error fetching sales:', error);
       toast.error('Erro ao carregar vendas: ' + (error.message || 'Erro de conexão'));
     } finally {
-      setLoading(false);
+      // Small check to ensure we only stop loading if this was the last request
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
   }, []);
 
   useEffect(() => {
-    fetchSales();
+    // Initial fetch
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    fetchSales(controller.signal);
 
     const channel = supabase
       .channel('sales-realtime')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'sales' },
-        () => fetchSales()
+        () => {
+          // Debounce realtime updates
+          if (abortControllerRef.current) abortControllerRef.current.abort();
+          const nextController = new AbortController();
+          abortControllerRef.current = nextController;
+          fetchSales(nextController.signal);
+        }
       )
       .subscribe();
 
     return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
       supabase.removeChannel(channel);
     };
   }, [fetchSales]);
@@ -108,9 +135,12 @@ const Sales: React.FC = () => {
       const saleCode = sale.code || '';
       const saleValue = sale.value?.toString() || '';
 
+      const devCode = sale.dev_code || '';
+
       const matchesSearch =
         clientName.toLowerCase().includes(filters.search.toLowerCase()) ||
         saleCode.toLowerCase().includes(filters.search.toLowerCase()) ||
+        devCode.toLowerCase().includes(filters.search.toLowerCase()) ||
         saleValue.includes(filters.search);
 
       const matchesSeller = filters.seller === 'Todos' || sale.seller === filters.seller;
@@ -131,6 +161,20 @@ const Sales: React.FC = () => {
       }
 
       return matchesSearch && matchesSeller && matchesPeriod;
+    }).sort((a, b) => {
+      // Sort by dev_code (descending)
+      const valA = a.dev_code || '';
+      const valB = b.dev_code || '';
+
+      // If both have dev_code, compare them. Otherwise, prioritize those with dev_code
+      if (valA && valB) {
+        return valB.localeCompare(valA, undefined, { numeric: true, sensitivity: 'base' });
+      }
+      if (valA) return -1;
+      if (valB) return 1;
+
+      // Fallback to date if no dev_code
+      return new Date(b.date).getTime() - new Date(a.date).getTime();
     });
   }, [sales, filters]);
 
@@ -147,6 +191,7 @@ const Sales: React.FC = () => {
       'Peso (g)': Number(s.weight || 0),
       'Frete (R$)': Number(s.shipping || 0),
       'Vendedor': s.seller,
+      'Cód. Dev': s.dev_code || '',
       'Conta': s.account?.name || '---'
     }));
     exportToExcel(dataToExport, 'Vendas_Flowy');
@@ -161,8 +206,9 @@ const Sales: React.FC = () => {
       const data = await readExcelFile(file);
       const { data: { user } } = await supabase.auth.getUser();
 
-      // Fetch all contacts to match by name
+      // Fetch all contacts and accounts to match by name
       const { data: contactsData } = await supabase.from('contacts').select('id, name, balance');
+      const { data: accountsData } = await supabase.from('accounts').select('id, name');
       const balanceMap = new Map((contactsData || []).map(c => [c.id, c.balance || 0]));
 
       const findClientId = (name: string) => {
@@ -184,22 +230,24 @@ const Sales: React.FC = () => {
         return null;
       };
 
+      const findAccountId = (name: string) => {
+        if (!name) return null;
+        const search = name.toLowerCase().trim();
+        const found = accountsData?.find(a => a.name.toLowerCase().trim() === search || a.name.toLowerCase().includes(search));
+        return found?.id || null;
+      };
+
       const newSales = data.map((row: any) => {
         const clientName = (row['Cliente'] || row['cliente'] || '').toString().trim();
+        const accountName = (row['Conta'] || row['conta'] || '').toString().trim();
+
         const client_id = findClientId(clientName);
+        const account_id = findAccountId(accountName);
 
-        // Parse numeric values safely (Handling Brazilian format: 1.234,56)
-        const parseValue = (val: any) => {
-          if (typeof val === 'number') return val;
-          if (!val) return 0;
-          const clean = val.toString().replace('R$', '').replace(/\./g, '').replace(',', '.').trim();
-          const parsed = parseFloat(clean);
-          return isNaN(parsed) ? 0 : parsed;
-        };
-
-        const value = parseValue(row['Valor_Total'] || row['Valor Total'] || row['valor_total'] || row['Valor'] || 0);
-        const weight = parseValue(row['Peso_Gramas'] || row['Peso (g)'] || row['peso_gramas'] || row['Peso'] || 0);
-        const shipping = parseValue(row['Frete'] || row['Frete (R$)'] || row['frete'] || 0);
+        // Parse numeric values safely
+        const value = parseCurrency(row['Valor_Total'] || row['Valor Total'] || row['valor_total'] || row['Valor'] || 0);
+        const weight = parseCurrency(row['Peso_Gramas'] || row['Peso (g)'] || row['peso_gramas'] || row['Peso'] || 0);
+        const shipping = parseCurrency(row['Frete'] || row['Frete (R$)'] || row['frete'] || 0);
 
         const isAiSale = (row['Vendedor'] || row['vendedor'] || '').toLowerCase().includes('ia');
 
@@ -213,10 +261,11 @@ const Sales: React.FC = () => {
           shipping,
           seller: row['Vendedor'] || row['vendedor'] || (isAiSale ? 'WhatsApp IA' : 'Manual'),
           is_ai: isAiSale,
+          dev_code: row['Cód. Dev'] || row['Cód Dev'] || row['dev_code'] || '',
           user_id: user?.id,
           client_id,
+          account_id,
           code: row['Codigo'] || row['Código'] || row['codigo'] || `IMP-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
-          // account_id removed as it was null and cause FK errors
         };
       });
 
@@ -240,14 +289,15 @@ const Sales: React.FC = () => {
       }
 
       toast.success(`${newSales.length} vendas importadas com sucesso!`);
-      fetchSales();
+      fetchSales(abortControllerRef.current?.signal);
       setImportModalOpen(false);
     } catch (err: any) {
-      console.error(err);
-      toast.error('Erro na importação: Verifique as colunas do Excel.');
+      console.error('Erro detalhado na importação:', err);
+      const errorMessage = err.message || 'Verifique as colunas do Excel.';
+      toast.error(`Erro na importação: ${errorMessage}`);
     } finally {
       setImporting(false);
-      e.target.value = '';
+      if (e.target) e.target.value = '';
     }
   };
 
@@ -366,42 +416,51 @@ const Sales: React.FC = () => {
         description="Gerencie todas as vendas realizadas e acompanhe os recebíveis."
         actions={
           <div className="flex gap-2">
-            <button
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => setImportModalOpen(true)}
-              className="hidden md:flex items-center justify-center size-10 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
+              className="hidden md:flex !size-10 !p-0"
               title="Importar Excel"
             >
               <ImportIcon className="size-6 text-slate-600 dark:text-slate-300" />
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={handleExportExcel}
               disabled={filteredSales.length === 0}
-              className="hidden md:flex items-center justify-center size-10 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm disabled:opacity-30"
+              className="hidden md:flex !size-10 !p-0"
               title="Exportar Excel"
             >
               <ExcelIcon className="size-6 text-emerald-600 dark:text-emerald-500" />
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={exportToPDF}
               disabled={filteredSales.length === 0}
-              className="hidden md:flex items-center justify-center size-10 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-30 shadow-sm"
+              className="hidden md:flex !size-10 !p-0"
               title="Exportar PDF"
             >
               <PdfIcon className="size-6" />
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={fetchSales}
-              className="flex items-center justify-center size-10 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-sm"
+              className="!size-10 !p-0"
             >
               <span className="material-symbols-outlined text-[24px]">refresh</span>
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => navigate('/sales/new')}
-              className="flex items-center justify-center gap-2 rounded-lg h-10 px-4 md:px-6 bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
+              leftIcon={<span className="material-symbols-outlined text-[20px]">add</span>}
+              className="shadow-lg shadow-primary/20"
             >
-              <span className="material-symbols-outlined text-[20px]">add</span>
               <span className="hidden md:inline">Nova Venda</span>
-            </button>
+              <span className="md:hidden">Venda</span>
+            </Button>
           </div>
         }
       />
@@ -415,7 +474,7 @@ const Sales: React.FC = () => {
       >
         <div className="space-y-4">
           <p className="text-sm text-slate-500">
-            Faça o upload de um arquivo .xlsx com as colunas: <strong>Cliente, Data, Valor_Total, Peso_Gramas, Frete, Vendedor</strong>.
+            Faça o upload de um arquivo .xlsx com as colunas: <strong>Cliente, Data, Valor_Total, Peso_Gramas, Frete, Vendedor, Cód. Dev, Conta</strong>.
           </p>
           <button
             onClick={() => downloadExampleTemplate('sales')}
@@ -520,44 +579,36 @@ const Sales: React.FC = () => {
 
       {/* Table Area */}
       <div className="bg-white dark:bg-slate-850 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[1000px]">
-            <thead>
-              <tr className="bg-gray-50 dark:bg-slate-900/50 border-b border-gray-200 dark:border-slate-700">
-                <th className="py-4 pl-6 pr-3 w-12 text-center">
-                  <input className="rounded border-gray-300 dark:border-slate-600 dark:bg-slate-800 text-primary focus:ring-primary/50 size-4" type="checkbox" />
-                </th>
-                <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Cliente / Conta</th>
-                <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-center">Data</th>
-                <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-right">Valor Total</th>
-                <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-center">Peso</th>
-                <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-right">Frete</th>
-                <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Vendedor</th>
-                <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
-              {loading ? (
-                <tr>
-                  <td colSpan={8} className="p-0">
-                    <SkeletonTable rows={itemsPerPage} columns={8} className="border-none rounded-none shadow-none" />
-                  </td>
-                </tr>
-              ) : paginatedSales.length === 0 ? (
-                <tr><td colSpan={8} className="py-12 text-center text-gray-400 italic">Nenhuma venda encontrada.</td></tr>
-              ) : (
-                paginatedSales.map(sale => (
-                  <SaleRow
-                    key={sale.id}
-                    sale={sale}
-                    onEdit={() => navigate(`/sales/edit/${sale.id}`)}
-                    onDelete={() => { setSaleToDelete(sale.id); setIsDeleteModalOpen(true); }}
-                  />
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <Table>
+          <TableHeader>
+            <th className="py-4 pl-6 pr-3 w-12 text-center">
+              <input className="rounded border-gray-300 dark:border-slate-600 dark:bg-slate-800 text-primary focus:ring-primary/50 size-4" type="checkbox" />
+            </th>
+            <TableHeadCell>Cliente / Conta</TableHeadCell>
+            <TableHeadCell align="center">Data</TableHeadCell>
+            <TableHeadCell align="right">Valor Total</TableHeadCell>
+            <TableHeadCell align="center">Peso</TableHeadCell>
+            <TableHeadCell align="right">Frete</TableHeadCell>
+            <TableHeadCell>Vendedor</TableHeadCell>
+            <TableHeadCell align="right">Ações</TableHeadCell>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableLoadingState colSpan={8} message="Carregando vendas..." />
+            ) : paginatedSales.length === 0 ? (
+              <TableEmptyState colSpan={8} message="Nenhuma venda encontrada." />
+            ) : (
+              paginatedSales.map(sale => (
+                <SaleRow
+                  key={sale.id}
+                  sale={sale}
+                  onEdit={() => navigate(`/sales/edit/${sale.id}`)}
+                  onDelete={() => { setSaleToDelete(sale.id); setIsDeleteModalOpen(true); }}
+                />
+              ))
+            )}
+          </TableBody>
+        </Table>
 
         {/* Pagination Footer */}
         <Pagination
@@ -587,11 +638,11 @@ const Sales: React.FC = () => {
 // Sale Row Component - with Edit button
 const SaleRow = ({ sale, onEdit, onDelete }: any) => {
   return (
-    <tr className="group hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors">
-      <td className="py-4 pl-6 pr-3 text-center">
+    <TableRow>
+      <TableCell className="py-4 pl-6 pr-3 text-center">
         <input className="rounded border-gray-300 dark:border-slate-600 dark:bg-slate-800 text-primary focus:ring-primary/50 size-4" type="checkbox" />
-      </td>
-      <td className="px-4 py-4">
+      </TableCell>
+      <TableCell>
         <div className="flex items-center gap-3">
           <div className={`size-10 rounded-xl ${sale.account?.color || 'bg-primary'} flex items-center justify-center shrink-0 border border-white/20 shadow-sm relative overflow-hidden group-hover:scale-105 transition-transform`}>
             {sale.account?.icon && sale.account.icon.startsWith('/') ? (
@@ -603,25 +654,33 @@ const SaleRow = ({ sale, onEdit, onDelete }: any) => {
           </div>
           <div className="flex flex-col">
             <span className="text-sm font-bold text-slate-900 dark:text-white line-clamp-1">{sale.client?.name || 'Venda Avulsa'}</span>
-            <span className="text-xs text-slate-400">{sale.code || sale.account?.name || '---'}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-400">{sale.code || sale.account?.name || '---'}</span>
+              {sale.dev_code && (
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-900/10 text-amber-600 dark:text-amber-400 text-[9px] font-black border border-amber-100 dark:border-amber-900/20">
+                  <span className="material-symbols-outlined text-[10px]">assignment_return</span>
+                  {sale.dev_code}
+                </span>
+              )}
+            </div>
           </div>
         </div>
-      </td>
-      <td className="px-4 py-4 text-center text-xs font-bold text-slate-500 whitespace-nowrap">
+      </TableCell>
+      <TableCell align="center" className="text-xs font-bold text-slate-500 whitespace-nowrap">
         {formatDate(sale.date)}
-      </td>
-      <td className="px-4 py-4 text-sm font-bold text-emerald-600 text-right whitespace-nowrap">
+      </TableCell>
+      <TableCell align="right" className="text-sm font-bold text-emerald-600 whitespace-nowrap">
         {"R$\u00A0"}{Number(sale.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-      </td>
-      <td className="px-4 py-4 text-center text-xs font-bold text-slate-500">
+      </TableCell>
+      <TableCell align="center" className="text-xs font-bold text-slate-500">
         {sale.weight ? `${Number(sale.weight).toLocaleString('pt-BR')}g` : '---'}
-      </td>
-      <td className="px-4 py-4 text-right text-xs font-bold text-slate-500">
+      </TableCell>
+      <TableCell align="right" className="text-xs font-bold text-slate-500">
         {sale.shipping > 0 ? (
           <>{"R$\u00A0"}{Number(sale.shipping).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</>
         ) : <span className="text-emerald-500">Grátis</span>}
-      </td>
-      <td className="px-4 py-4">
+      </TableCell>
+      <TableCell>
         <div className="flex flex-col gap-1">
           <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 uppercase tracking-wider w-fit">
             {sale.seller || 'Manual'}
@@ -633,8 +692,8 @@ const SaleRow = ({ sale, onEdit, onDelete }: any) => {
             </span>
           )}
         </div>
-      </td>
-      <td className="px-4 py-4 text-right">
+      </TableCell>
+      <TableCell align="right">
         <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
           <button onClick={onEdit} className="p-1.5 text-slate-400 hover:text-primary transition-colors">
             <span className="material-symbols-outlined text-lg">edit</span>
@@ -643,8 +702,8 @@ const SaleRow = ({ sale, onEdit, onDelete }: any) => {
             <span className="material-symbols-outlined text-lg">delete</span>
           </button>
         </div>
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 };
 

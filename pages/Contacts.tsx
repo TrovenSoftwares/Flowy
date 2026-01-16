@@ -29,6 +29,8 @@ import {
   TablePagination
 } from '../components/Table';
 import Card from '../components/Card';
+import ChargeModal from '../components/ChargeModal';
+import { WhatsAppIcon } from '../components/BrandedIcons';
 
 const Contacts: React.FC = () => {
   const navigate = useNavigate();
@@ -61,6 +63,7 @@ const Contacts: React.FC = () => {
   // Details State
   const [selectedContact, setSelectedContact] = useState<any | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isChargeModalOpen, setIsChargeModalOpen] = useState(false);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -392,12 +395,12 @@ const Contacts: React.FC = () => {
       <Card noPadding>
         <Table>
           <TableHeader>
-            <TableHeadCell width="48px" className="text-center">
+            <TableHeadCell width="48px" className="text-center hidden sm:table-cell">
               <input className="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-800 text-primary focus:ring-primary/50 size-4" type="checkbox" />
             </TableHeadCell>
             <TableHeadCell>Cliente</TableHeadCell>
-            <TableHeadCell>Contato</TableHeadCell>
-            <TableHeadCell align="right">
+            <TableHeadCell className="hidden md:table-cell">Contato</TableHeadCell>
+            <TableHeadCell align="right" className="hidden lg:table-cell">
               <div className="flex items-center justify-end gap-1 whitespace-nowrap">
                 Total Vendas
                 <Tooltip content="Soma das Vendas + Cheques Devolvidos" position="top">
@@ -405,17 +408,13 @@ const Contacts: React.FC = () => {
                 </Tooltip>
               </div>
             </TableHeadCell>
-            <TableHeadCell align="right">Total Recebido</TableHeadCell>
+            <TableHeadCell align="right" className="hidden xl:table-cell">Total Recebido</TableHeadCell>
             <TableHeadCell align="right">Saldo</TableHeadCell>
             <TableHeadCell align="right">Ações</TableHeadCell>
           </TableHeader>
           <TableBody>
             {loading ? (
-              <tr>
-                <td colSpan={7} className="p-0">
-                  <SkeletonTable rows={itemsPerPage} columns={7} className="border-none rounded-none shadow-none" />
-                </td>
-              </tr>
+              <TableLoadingState colSpan={7} />
             ) : paginatedContacts.length === 0 ? (
               <TableEmptyState colSpan={7} message="Nenhum contato encontrado." icon="person_off" />
             ) : (
@@ -426,6 +425,7 @@ const Contacts: React.FC = () => {
                   onEdit={() => navigate(`/contacts/edit/${contact.id}`)}
                   onDelete={() => setDeleteModal({ isOpen: true, id: contact.id })}
                   onView={() => { setSelectedContact(contact); setIsDetailsOpen(true); }}
+                  onCharge={() => { setSelectedContact(contact); setIsChargeModalOpen(true); }}
                 />
               ))
             )}
@@ -500,6 +500,12 @@ const Contacts: React.FC = () => {
         onClose={() => setIsDetailsOpen(false)}
         contact={selectedContact}
       />
+
+      <ChargeModal
+        isOpen={isChargeModalOpen}
+        onClose={() => setIsChargeModalOpen(false)}
+        contact={selectedContact}
+      />
     </div>
   );
 };
@@ -507,10 +513,10 @@ const Contacts: React.FC = () => {
 
 
 // Contact Row Component - Premium style matching Sales/Transactions
-const ContactRow = ({ contact, onEdit, onDelete, onView }: any) => {
+const ContactRow = ({ contact, onEdit, onDelete, onView, onCharge }: any) => {
   return (
     <TableRow>
-      <TableCell align="center">
+      <TableCell className="text-center hidden sm:table-cell">
         <input className="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-800 text-primary focus:ring-primary/50 size-4" type="checkbox" />
       </TableCell>
       <TableCell>
@@ -528,7 +534,7 @@ const ContactRow = ({ contact, onEdit, onDelete, onView }: any) => {
           </div>
         </div>
       </TableCell>
-      <TableCell>
+      <TableCell className="hidden md:table-cell">
         <div className="flex flex-col">
           <span className="text-sm text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
             <span className="material-symbols-outlined text-[16px] text-slate-400">phone</span>
@@ -537,10 +543,10 @@ const ContactRow = ({ contact, onEdit, onDelete, onView }: any) => {
           <span className="text-xs text-slate-400">{contact.email || '---'}</span>
         </div>
       </TableCell>
-      <TableCell align="right" className="font-bold text-blue-600">
+      <TableCell align="right" className="font-bold text-blue-600 hidden lg:table-cell">
         R$ {contact.totalSales.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
       </TableCell>
-      <TableCell align="right" className="font-bold text-emerald-600">
+      <TableCell align="right" className="font-bold text-emerald-600 hidden xl:table-cell">
         R$ {contact.totalReceived.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
       </TableCell>
       <TableCell align="right">
@@ -550,6 +556,15 @@ const ContactRow = ({ contact, onEdit, onDelete, onView }: any) => {
       </TableCell>
       <TableCell align="right">
         <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          {contact.balance > 0 && (
+            <button
+              onClick={onCharge}
+              className="p-1.5 text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors"
+              title="Cobrar via WhatsApp"
+            >
+              <WhatsAppIcon className="size-5" />
+            </button>
+          )}
           <button onClick={onView} className="p-1.5 text-slate-400 hover:text-blue-500 transition-colors" title="Ver Detalhes">
             <span className="material-symbols-outlined text-lg">visibility</span>
           </button>

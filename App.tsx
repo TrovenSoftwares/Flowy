@@ -28,7 +28,6 @@ import NewContact from './pages/NewContact';
 import NewTeamMember from './pages/NewTeamMember';
 import Sales from './pages/Sales';
 import NewSale from './pages/NewSale';
-import ReviewSaleIA from './pages/ReviewSaleIA';
 import Sellers from './pages/Sellers';
 import NewSeller from './pages/NewSeller';
 import ForgotPassword from './pages/ForgotPassword';
@@ -217,7 +216,6 @@ const AppContent = () => {
               <Route path="/sales" element={<ProtectedRoute><Sales /></ProtectedRoute>} />
               <Route path="/sales/new" element={<ProtectedRoute><NewSale /></ProtectedRoute>} />
               <Route path="/sales/edit/:id" element={<ProtectedRoute><NewSale /></ProtectedRoute>} />
-              <Route path="/sales/review/:id" element={<ProtectedRoute><ReviewSaleIA /></ProtectedRoute>} />
               <Route path="/contacts" element={<ProtectedRoute><Contacts /></ProtectedRoute>} />
               <Route path="/contacts/new" element={<ProtectedRoute><NewContact /></ProtectedRoute>} />
               <Route path="/contacts/edit/:id" element={<ProtectedRoute><NewContact /></ProtectedRoute>} />

@@ -9,9 +9,37 @@ import PageHeader from '../components/PageHeader';
 import { extractFinancialDataWithAI } from '../lib/groq';
 import { SkeletonCard } from '../components/Skeleton';
 import Pagination from '../components/Pagination';
+import Button from '../components/Button';
+import Card from '../components/Card';
 
 // --- Global Type Definitions ---
 type AutoClassification = 'transaction' | 'sale' | 'discard';
+
+// --- Helper Functions ---
+const formatCurrencyInput = (value: string | number) => {
+  if (!value) return '';
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  if (isNaN(num)) return '';
+  return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+const maskCurrency = (value: string) => {
+  const clean = value.replace(/\D/g, '');
+  if (!clean) return '';
+  const num = parseFloat(clean) / 100;
+  return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+const parseCurrency = (value: string | number) => {
+  if (!value) return 0;
+  if (typeof value === 'number') return value;
+  // Se tiver vírgula, assume formato BR (1.000,00)
+  if (value.includes(',')) {
+    return parseFloat(value.replace(/\./g, '').replace(',', '.'));
+  }
+  return parseFloat(value);
+};
+
 
 interface PendingMessage {
   id: string;
@@ -40,6 +68,7 @@ interface PendingMessage {
     weight?: string;
     shipping?: string;
     seller?: string;
+    suggested_category?: string;
   };
 }
 
@@ -113,7 +142,7 @@ const TransactionReviewCard = ({ msg, categories, accounts, clients, onUpdate, o
                 type="text"
                 placeholder="0,00"
                 value={msg.editData.value}
-                onChange={(e) => onUpdate(msg.id, 'value', e.target.value)}
+                onChange={(e) => onUpdate(msg.id, 'value', maskCurrency(e.target.value))}
               />
             </div>
           </div>
@@ -153,6 +182,12 @@ const TransactionReviewCard = ({ msg, categories, accounts, clients, onUpdate, o
             />
           </div>
 
+          {!msg.editData.category_id && msg.editData.suggested_category && (
+            <p className="mb-1 text-[11px] text-amber-600 font-medium flex items-center gap-1">
+              <span className="material-symbols-outlined text-[12px]">lightbulb</span>
+              Sugestão IA: <strong>{msg.editData.suggested_category}</strong>
+            </p>
+          )}
           <CustomSelect
             label="Categoria"
             value={msg.editData.category_id}
@@ -262,7 +297,7 @@ const SaleReviewCard = ({ msg, categories, accounts, clients, sellers, onUpdate,
                 type="text"
                 placeholder="0,00"
                 value={msg.editData.value}
-                onChange={(e) => onUpdate(msg.id, 'value', e.target.value)}
+                onChange={(e) => onUpdate(msg.id, 'value', maskCurrency(e.target.value))}
               />
             </div>
           </div>
@@ -288,13 +323,16 @@ const SaleReviewCard = ({ msg, categories, accounts, clients, sellers, onUpdate,
             />
           </div>
 
-          <CustomSelect
-            label="Conta Bancária"
-            value={msg.editData.account_id}
-            onChange={(val) => onUpdate(msg.id, 'account_id', val)}
-            placeholder="Selecionar..."
-            options={accounts.map((a: any) => ({ value: a.id, label: a.name, icon: 'account_balance' }))}
-          />
+          <div className="col-span-1">
+            <label className="mb-1 block text-xs font-bold text-slate-500 uppercase tracking-wider">Cód. Dev</label>
+            <input
+              className="block w-full rounded-lg border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 py-2.5 px-3 text-sm focus:ring-primary focus:border-primary dark:text-white shadow-sm"
+              type="text"
+              placeholder="Código..."
+              value={msg.editData.dev_code || ''}
+              onChange={(e) => onUpdate(msg.id, 'dev_code', e.target.value)}
+            />
+          </div>
 
           <CustomSelect
             label="Vendedor"
@@ -349,21 +387,6 @@ const SaleReviewCard = ({ msg, categories, accounts, clients, sellers, onUpdate,
   </article>
 );
 
-// --- Helpers ---
-const parseCurrency = (val: string): number => {
-  if (!val) return 0;
-  // Remove currency symbols, spaces
-  const clean = val.replace(/R\$\s?|[^0-9,.-]/gi, '');
-  // If it has a comma and a period, assume period is thousand separator and comma is decimal
-  if (clean.includes(',') && clean.includes('.')) {
-    return parseFloat(clean.replace(/\./g, '').replace(',', '.'));
-  }
-  // If it has only a comma, replace with period
-  if (clean.includes(',')) {
-    return parseFloat(clean.replace(',', '.'));
-  }
-  return parseFloat(clean) || 0;
-};
 
 const classifyMessage = (content: string): AutoClassification => {
   const lower = content.toLowerCase();
@@ -374,14 +397,16 @@ const classifyMessage = (content: string): AutoClassification => {
   if (typeMatch) {
     const t = typeMatch[1];
     if (t.includes('venda')) return 'sale';
-    if (t.includes('recebimento') || t.includes('pagamento') || t.includes('despesa') || t.includes('entrada') || t.includes('saida') || t.includes('saída')) return 'transaction';
+    if (t.includes('recebimento') || t.includes('pagamento') || t.includes('despesa') || t.includes('entrada') || t.includes('saida') || t.includes('saída') || t.includes('receita')) return 'transaction';
   }
 
   // Priority 1: Payment/receipt keywords = transactions (income) - ESPECÍFICAS
   const paymentKeywords = [
     'pagamento recebido', 'pix recebido', 'cliente pagou', 'recebi o pix',
     'pagou a venda', 'recebimento de', 'comprovante de pagamento', 'transferi para',
-    'fiz o pix', 'pagou o boleto', 'quitou', 'valor recebido', 'valor pago'
+    'fiz o pix', 'pagou o boleto', 'quitou', 'valor recebido', 'valor pago',
+    'entrada', 'recebimento', 'receita', 'entrou', 'recebi',
+    'despesa', 'saiu', 'pagamento', 'saida', 'peguei'
   ];
   if (paymentKeywords.some(w => lower.includes(w))) return 'transaction';
 
@@ -636,6 +661,7 @@ const Review: React.FC = () => {
         // Robust Phone Matching
         const jidRaw = m.remote_jid.split('@')[0].replace(/\D/g, '');
         const jidNormalized = (jidRaw.startsWith('55') && jidRaw.length > 10) ? jidRaw.substring(2) : jidRaw;
+        const jidLast9 = jidRaw.slice(-9);
         const isGroupMessage = m.is_group || m.remote_jid?.endsWith('@g.us');
 
         // Para grupos, buscar pelo whatsapp_id
@@ -647,7 +673,12 @@ const Review: React.FC = () => {
             if (!c.phone) return false;
             const phoneRaw = c.phone.replace(/\D/g, '');
             const phoneNormalized = (phoneRaw.startsWith('55') && phoneRaw.length > 10) ? phoneRaw.substring(2) : phoneRaw;
-            return jidNormalized === phoneNormalized || phoneNormalized.endsWith(jidNormalized) || jidNormalized.endsWith(phoneNormalized);
+            const phoneLast9 = phoneRaw.slice(-9);
+            // Match por vários critérios
+            return jidNormalized === phoneNormalized ||
+              phoneNormalized.endsWith(jidNormalized) ||
+              jidNormalized.endsWith(phoneNormalized) ||
+              jidLast9 === phoneLast9;
           });
         }
 
@@ -690,7 +721,8 @@ const Review: React.FC = () => {
             type: extracted.type as 'income' | 'expense',
             weight: extracted.weight || '',
             shipping: extracted.shipping || '',
-            seller: '' // Initialize seller
+            seller: '', // Initialize seller
+            dev_code: '' // Initialize dev_code
           }
         };
       });
@@ -698,22 +730,24 @@ const Review: React.FC = () => {
       // Filtrar apenas mensagens de contatos/grupos com monitoramento ativo
       const filteredMsgs = mappedMsgs.filter(m => (m as any).isMonitored === true);
 
-      setClients(contacts || []);
-      setMessages(filteredMsgs);
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: settings } = await supabase
-          .from('user_settings')
-          .select('ai_config')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (settings?.ai_config) {
-          const { groqKey, anthropicKey, openAIKey } = settings.ai_config;
-          setApiKey(groqKey || anthropicKey || openAIKey);
-        }
+      // Atualizar status para 'ignored' quando classificação for 'discard'
+      const discardMsgs = filteredMsgs.filter(m => m.classification === 'discard');
+      if (discardMsgs.length > 0) {
+        const discardIds = discardMsgs.map(m => m.id);
+        await supabase
+          .from('whatsapp_messages')
+          .update({ status: 'ignored' })
+          .in('id', discardIds);
       }
+
+      // Apenas mensagens que não são discard vão para a Revisão
+      const reviewMsgs = filteredMsgs.filter(m => m.classification !== 'discard');
+
+      setClients(contacts || []);
+      setMessages(reviewMsgs);
+
+      // API keys are now hardcoded in lib/groq.ts - just set a flag to enable AI features
+      setApiKey('hardcoded');
     } catch (error) {
       console.error('Error fetching review data:', error);
       toast.error('Erro ao carregar dados de revisão.');
@@ -916,13 +950,17 @@ const Review: React.FC = () => {
               classification: refined.classification,
               editData: {
                 ...m.editData,
-                value: refined.value || m.editData.value,
+                value: refined.value ? formatCurrencyInput(refined.value) : m.editData.value,
+                date: refined.date || m.editData.date,
                 description: refined.description || m.editData.description,
                 category_id: refined.category_id || m.editData.category_id,
                 client_id: refined.client_id || m.editData.client_id, // AI might find a client
                 type: refined.type || m.editData.type,
                 weight: refined.weight || m.editData.weight,
-                shipping: refined.shipping || m.editData.shipping
+                shipping: refined.shipping || m.editData.shipping,
+                seller: refined.seller || m.editData.seller,
+                dev_code: refined.dev_code || m.editData.dev_code,
+                suggested_category: refined.suggested_category || m.editData.suggested_category
               }
             };
           }
@@ -1008,19 +1046,13 @@ const Review: React.FC = () => {
             onClick={() => setActiveType('transacoes')}
             className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${activeType === 'transacoes' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
           >
-            Transações ({transactionMessages.length})
+            Receitas / Despesas ({transactionMessages.length})
           </button>
           <button
             onClick={() => setActiveType('vendas')}
             className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${activeType === 'vendas' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
           >
-            Vendas Pendentes ({saleMessages.length})
-          </button>
-          <button
-            onClick={() => setActiveType('lixo')}
-            className={`px-6 py-3 text-sm font-bold border-b-2 transition-colors whitespace-nowrap ${activeType === 'lixo' ? 'border-rose-500 text-rose-500' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'}`}
-          >
-            Ignorados / Erros ({discardedMessages.length})
+            Vendas ({saleMessages.length})
           </button>
         </div>
       </div>
@@ -1074,13 +1106,15 @@ const Review: React.FC = () => {
                   <p className="text-xs text-slate-500 line-clamp-1">{msg.content}</p>
                   <p className="text-xs text-rose-500 font-bold mt-1">Motivo: {msg.ignore_reason || 'Erro no processamento'}</p>
                 </div>
-                <button
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => handleRestore(msg.id)}
-                  className="size-8 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 hover:text-primary hover:border-primary transition-colors shadow-sm"
+                  className="!size-8 !p-0"
                   title="Restaurar para revisão"
                 >
                   <span className="material-symbols-outlined text-[18px]">restore_from_trash</span>
-                </button>
+                </Button>
               </article>
             )
           ))

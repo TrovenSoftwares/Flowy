@@ -82,7 +82,7 @@ const IntegrationConfig: React.FC = () => {
 
       const { data, error } = await supabase
         .from('user_settings')
-        .select('ai_config')
+        .select('*')
         .eq('user_id', user.id)
         .maybeSingle();
 
@@ -100,19 +100,8 @@ const IntegrationConfig: React.FC = () => {
 
       if (error) throw error;
 
-      if (data?.ai_config) {
-        const { historyPeriod: savedHistory, webhookUrl: savedWebhook, whatsappInstance, ...restConfig } = data.ai_config;
-
-        setAiConfig(prev => ({ ...prev, ...restConfig }));
-        if (savedHistory) setHistoryPeriod(savedHistory);
-        if (savedWebhook) setWebhookUrl(savedWebhook);
-
-        const activeInstance = (instanceData && instanceData[0]?.name) || whatsappInstance;
-        if (activeInstance) {
-          setInstanceName(activeInstance);
-          return activeInstance;
-        }
-      } else if (instanceData && instanceData[0]?.name) {
+      // Load instance from instances table (not ai_config anymore)
+      if (instanceData && instanceData[0]?.name) {
         setInstanceName(instanceData[0].name);
         return instanceData[0].name;
       }
@@ -311,21 +300,6 @@ const IntegrationConfig: React.FC = () => {
 
       if (dbError) throw dbError;
 
-      // 5. Update user_settings (persistent storage of webhook URL)
-      const { error } = await supabase
-        .from('user_settings')
-        .upsert({
-          user_id: user.id,
-          ai_config: {
-            ...aiConfig,
-            whatsappInstance: newInstanceName,
-            webhookUrl: DEFAULT_WEBHOOK_URL
-          },
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'user_id' });
-
-      if (error) throw error;
-
       setInstanceName(newInstanceName);
       setIsInstanceModalOpen(false);
       setNewInstanceName('');
@@ -485,18 +459,7 @@ const IntegrationConfig: React.FC = () => {
 
       if (dbError) throw dbError;
 
-      // 2. Remove from settings
-      const { error } = await supabase
-        .from('user_settings')
-        .upsert({
-          user_id: user.id,
-          ai_config: { ...aiConfig, whatsappInstance: null },
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'user_id' });
-
-      if (error) throw error;
-
-      // 3. Delete from Evolution API
+      // 2. Delete from Evolution API
       try {
         toast.loading('Apagando da Evolution API...', { id: 'delete-toast' });
         await evolutionApi.deleteInstance(instanceName);
@@ -520,37 +483,10 @@ const IntegrationConfig: React.FC = () => {
   };
 
   const handleSaveSettings = async (newConfig?: any, newHistoryPeriod?: string, newWebhookUrl?: string) => {
-    const configToSave = newConfig || aiConfig;
-    const historyToSave = newHistoryPeriod || historyPeriod;
-    const webhookToSave = newWebhookUrl !== undefined ? newWebhookUrl : webhookUrl;
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error('Usuário não autenticado.');
-        return;
-      }
-
-      const { error } = await supabase
-        .from('user_settings')
-        .upsert({
-          user_id: user.id,
-          ai_config: { ...configToSave, historyPeriod: historyToSave, webhookUrl: webhookToSave },
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'user_id' });
-
-      if (error) throw error;
-
-      // Update local state only after successful save
-      if (newConfig) setAiConfig(newConfig);
-      if (newHistoryPeriod) setHistoryPeriod(newHistoryPeriod);
-      // Logic for webhookUrl state update is usually handled by input onChange, but we can sync here if needed
-
-      toast.success('Configurações salvas!');
-    } catch (error) {
-      console.error('Failed to save settings:', error);
-      toast.error('Erro ao salvar as configurações.');
-    }
+    // ai_config no longer persisted to database - only local state
+    if (newConfig) setAiConfig(newConfig);
+    if (newHistoryPeriod) setHistoryPeriod(newHistoryPeriod);
+    toast.success('Configurações salvas localmente!');
   };
 
   const handleToggleAiConfig = async (key: keyof typeof aiConfig) => {

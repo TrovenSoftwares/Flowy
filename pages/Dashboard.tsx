@@ -6,7 +6,17 @@ import PageHeader from '../components/PageHeader';
 import { supabase } from '../lib/supabase';
 import { formatDate } from '../utils/utils';
 import { SkeletonCard, SkeletonChart, SkeletonTable } from '../components/Skeleton';
-import { PieChart, Pie, Cell, ResponsiveContainer, Sector } from 'recharts';
+import {
+  PieChart, Pie, Cell, ResponsiveContainer, Sector,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+} from 'recharts';
+import CustomSelect from '../components/CustomSelect';
+import Card from '../components/Card';
+import {
+  Table, TableHeader, TableHeadCell, TableBody,
+  TableRow, TableCell, TableLoadingState, TableEmptyState
+} from '../components/Table';
+import AiConsultant from '../components/AiConsultant';
 
 const renderActiveShape = (props: any) => {
   const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } = props;
@@ -38,6 +48,20 @@ const renderActiveShape = (props: any) => {
   );
 };
 
+const classifyTransaction = (t: any) => {
+  const catList: any = t.categories;
+  const catName = Array.isArray(catList) ? catList[0]?.name : catList?.name;
+  const isReturn = catName === 'Devolução';
+  const isBouncedCheck = t.description?.includes('Cheque Devolvido');
+
+  let type: 'income' | 'expense' = t.type;
+  let finalType = type;
+  if (type === 'income' && isReturn) finalType = 'expense';
+  if (type === 'expense' && isBouncedCheck) finalType = 'income';
+
+  return { type: finalType, value: Number(t.value) };
+};
+
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = React.useState(true);
@@ -50,10 +74,16 @@ const Dashboard: React.FC = () => {
     prevRevenue: 0,
     prevExpenses: 0
   });
-  const [recentTransactions, setRecentTransactions] = React.useState<any[]>([]);
   const [chartData, setChartData] = React.useState<any[]>([]);
   const [expenseCategories, setExpenseCategories] = React.useState<any[]>([]);
+  const [recentTransactions, setRecentTransactions] = React.useState<any[]>([]);
   const [activeIndex, setActiveIndex] = React.useState<number | null>(null);
+
+  // New States
+  const [accounts, setAccounts] = React.useState<any[]>([]);
+  const [selectedAccountId, setSelectedAccountId] = React.useState<string>('all');
+  const [projectionData, setProjectionData] = React.useState<any[]>([]);
+  const [loadingProjection, setLoadingProjection] = React.useState(false);
 
   const fetchDashboardData = React.useCallback(async () => {
     setLoading(true);
@@ -87,7 +117,7 @@ const Dashboard: React.FC = () => {
       const { data: allTrans, error: transError } = await supabase
         .from('transactions')
         .select(`
-          id, value, type, date, status, description,
+          id, value, type, date, status, description, account_id,
           categories (name, color, icon)
         `)
         .eq('status', 'confirmed')
@@ -97,21 +127,6 @@ const Dashboard: React.FC = () => {
 
       if (transError) throw transError;
 
-      // Helper for classification
-      const classifyTransaction = (t: any) => {
-        const catList: any = t.categories;
-        const catName = Array.isArray(catList) ? catList[0]?.name : catList?.name;
-        const isReturn = catName === 'Devolução';
-        const isBouncedCheck = t.description?.includes('Cheque Devolvido');
-
-        let type: 'income' | 'expense' = t.type;
-        // Swap logic logic
-        let finalType = type;
-        if (type === 'income' && isReturn) finalType = 'expense';
-        if (type === 'expense' && isBouncedCheck) finalType = 'income';
-
-        return { type: finalType, value: Number(t.value) };
-      };
 
       // Current Period Stats
       const currentMonth = now.getMonth();
@@ -235,7 +250,8 @@ const Dashboard: React.FC = () => {
       const catMap = new Map();
       currentPeriodTrans.filter(t => {
         const { type } = classifyTransaction(t);
-        return type === 'expense';
+        const matchesAccount = selectedAccountId === 'all' || t.account_id === selectedAccountId;
+        return type === 'expense' && matchesAccount;
       }).forEach((t: any) => {
         const catName = t.categories?.name || 'Outros';
         const catColor = t.categories?.color || 'bg-slate-300';
@@ -257,8 +273,17 @@ const Dashboard: React.FC = () => {
         }));
       setExpenseCategories(cats);
 
+      // 2. Fetch Accounts for filtering
+      const { data: accsData } = await supabase
+        .from('accounts')
+        .select('id, name, icon');
 
-      // 2. Fetch Recent Transactions
+      if (accsData) {
+        setAccounts(accsData);
+      }
+
+
+      // 3. Fetch Recent Transactions
       const { data: recent, error: recentError } = await supabase
         .from('transactions')
         .select(`
@@ -272,12 +297,74 @@ const Dashboard: React.FC = () => {
       if (recentError) throw recentError;
       setRecentTransactions(recent || []);
 
+      // 4. Calculate Cash Flow Projection (Next 30 Days)
+      fetchProjection();
+
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
     } finally {
       setLoading(false);
     }
-  }, [filter]);
+  }, [filter, selectedAccountId]);
+
+  const fetchProjection = async () => {
+    setLoadingProjection(true);
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Current Balance
+      const { data: pastTrans } = await supabase
+        .from('transactions')
+        .select('value, type, categories(name)')
+        .lte('date', today.toISOString().split('T')[0]);
+
+      let currentBalance = 0;
+      (pastTrans || []).forEach(t => {
+        const { type } = classifyTransaction(t);
+        if (type === 'income') currentBalance += Number(t.value);
+        else currentBalance -= Number(t.value);
+      });
+
+      // Future Transactions
+      const thirtyDaysLater = new Date();
+      thirtyDaysLater.setDate(today.getDate() + 30);
+
+      const { data: futureTrans } = await supabase
+        .from('transactions')
+        .select('date, value, type, categories(name)')
+        .gt('date', today.toISOString().split('T')[0])
+        .lte('date', thirtyDaysLater.toISOString().split('T')[0])
+        .eq('status', 'confirmed');
+
+      const projections = [];
+      let runningBalance = currentBalance;
+
+      for (let i = 0; i <= 30; i++) {
+        const d = new Date();
+        d.setDate(today.getDate() + i);
+        const dateStr = d.toISOString().split('T')[0];
+
+        const dayTrans = (futureTrans || []).filter(t => t.date === dateStr);
+        dayTrans.forEach(t => {
+          const { type } = classifyTransaction(t);
+          if (type === 'income') runningBalance += Number(t.value);
+          else runningBalance -= Number(t.value);
+        });
+
+        projections.push({
+          date: d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+          balance: runningBalance,
+          rawDate: dateStr
+        });
+      }
+      setProjectionData(projections);
+    } catch (error) {
+      console.error('Error calculating projection:', error);
+    } finally {
+      setLoadingProjection(false);
+    }
+  };
 
   React.useEffect(() => {
     fetchDashboardData();
@@ -318,6 +405,8 @@ const Dashboard: React.FC = () => {
       </div>
 
       <div className="space-y-6 pt-6">
+        {/* AI Consultant Widget */}
+        <AiConsultant />
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4" data-tour="dashboard-stats">
@@ -461,10 +550,23 @@ const Dashboard: React.FC = () => {
           {/* Expense Categories */}
           <div className="bg-white dark:bg-slate-850 p-6 rounded-xl border border-[#e7edf3] dark:border-slate-800 shadow-sm flex flex-col min-h-[420px]">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Despesas por Categoria</h3>
-              <span className="material-symbols-outlined text-slate-300 dark:text-slate-600">donut_large</span>
+              <div className="flex flex-col">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Despesas por Categoria</h3>
+                <p className="text-xs text-slate-500 font-medium">Análise volumétrica por setor</p>
+              </div>
+              <div className="w-40">
+                <CustomSelect
+                  options={[
+                    { value: 'all', label: 'Todas Contas', icon: 'account_balance_wallet' },
+                    ...accounts.map(acc => ({ value: acc.id, label: acc.name, icon: acc.icon }))
+                  ]}
+                  value={selectedAccountId}
+                  onChange={setSelectedAccountId}
+                  className="!h-9"
+                  placeholder="Conta..."
+                />
+              </div>
             </div>
-            <p className="text-xs text-slate-500 mb-2 font-medium">Análise volumétrica por setor</p>
 
             <div className="flex-1 flex flex-col items-center justify-center relative">
               {expenseCategories.length > 0 ? (
@@ -572,6 +674,122 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
+        {/* Projection Section */}
+        <div className="lg:col-span-3">
+          <div className="bg-white dark:bg-slate-850 p-8 rounded-xl border border-[#e7edf3] dark:border-slate-800 shadow-sm flex flex-col min-h-[450px]">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Projeção de Fluxo de Caixa</h3>
+                <p className="text-sm text-slate-500 font-medium italic mt-1">Estimativa de saldo para os próximos 30 dias com base em lançamentos futuros confirmados</p>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/30 rounded-full border border-emerald-100 dark:border-emerald-900/30 text-emerald-600 dark:text-emerald-400">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  <span className="text-[10px] font-black uppercase tracking-widest">Tempo Real</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex-1 min-h-[300px] relative">
+              {loadingProjection ? (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
+                </div>
+              ) : projectionData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={projectionData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorBalance" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" opacity={0.3} />
+                    <XAxis
+                      dataKey="date"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 11, fill: '#94a3b8', fontWeight: 500 }}
+                      interval={4}
+                      dy={10}
+                    />
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 11, fill: '#94a3b8', fontWeight: 500 }}
+                      tickFormatter={(val) => `R$${Math.abs(val) >= 1000 ? (val / 1000).toFixed(0) + 'k' : val}`}
+                      dx={-10}
+                    />
+                    <Tooltip
+                      cursor={{ stroke: '#10b981', strokeWidth: 1, strokeDasharray: '4 4' }}
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const val = Number(payload[0].value);
+                          return (
+                            <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-2xl animate-in fade-in zoom-in-95">
+                              <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-2 pb-2 border-b border-slate-100 dark:border-slate-800">
+                                {payload[0].payload.date}
+                              </p>
+                              <div className="flex items-center gap-3">
+                                <div className={`size-8 rounded-lg flex items-center justify-center ${val >= 0 ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
+                                  <span className="material-symbols-outlined text-[18px]">
+                                    {val >= 0 ? 'account_balance_wallet' : 'warning'}
+                                  </span>
+                                </div>
+                                <div>
+                                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tighter">Saldo Previsto</p>
+                                  <p className={`text-lg font-black ${val >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                    R$ {val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="balance"
+                      stroke="#10b981"
+                      strokeWidth={4}
+                      fillOpacity={1}
+                      fill="url(#colorBalance)"
+                      animationDuration={2000}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-4">
+                  <div className="size-16 rounded-full bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center">
+                    <span className="material-symbols-outlined text-4xl opacity-20 text-slate-300">show_chart</span>
+                  </div>
+                  <p className="text-sm italic font-medium">Nenhuma projeção disponível para este período.</p>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 bg-emerald-50/50 dark:bg-emerald-950/20 rounded-2xl border border-emerald-100/50 dark:border-emerald-900/30">
+                <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-1">Status</p>
+                <p className="text-xs text-emerald-800 dark:text-emerald-300 font-medium">Projeção Saudável</p>
+              </div>
+              <div className="p-4 bg-blue-50/50 dark:bg-blue-950/20 rounded-2xl border border-blue-100/50 dark:border-blue-900/30">
+                <p className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-1">Abrangência</p>
+                <p className="text-xs text-blue-800 dark:text-blue-300 font-medium">Próximos 30 Dias</p>
+              </div>
+              <div className="p-4 bg-amber-50/50 dark:bg-amber-950/20 rounded-2xl border border-amber-100/50 dark:border-amber-900/30">
+                <p className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest mb-1">Dica</p>
+                <p className="text-xs text-amber-800 dark:text-amber-300 font-medium">Considere transações recorrentes</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Recent Transactions */}
         <div className="bg-white dark:bg-slate-850 rounded-xl border border-[#e7edf3] dark:border-slate-800 shadow-sm overflow-hidden flex flex-col">
           <div className="p-6 border-b border-[#e7edf3] dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -589,58 +807,48 @@ const Dashboard: React.FC = () => {
               </button>
             </div>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300">
-              <thead className="bg-slate-50 dark:bg-slate-800 text-xs uppercase font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700">
-                <tr>
-                  <th className="px-6 py-4 w-12 text-center whitespace-nowrap">
-                    <div className="size-4 border border-slate-300 dark:border-slate-600 rounded"></div>
-                  </th>
-                  <th className="px-6 py-4 whitespace-nowrap">Descrição</th>
-                  <th className="px-6 py-4 whitespace-nowrap">Categoria</th>
-                  <th className="px-6 py-4 whitespace-nowrap">Origem</th>
-                  <th className="px-6 py-4 whitespace-nowrap">Data</th>
-                  <th className="px-6 py-4 whitespace-nowrap">Valor</th>
-                  <th className="px-6 py-4 text-center whitespace-nowrap">Status</th>
-                  <th className="px-6 py-4"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                {loading ? (
-                  <tr>
-                    <td colSpan={7} className="p-0">
-                      <SkeletonTable rows={5} columns={7} className="border-none rounded-none shadow-none" />
-                    </td>
-                  </tr>
-                ) : recentTransactions.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-8 text-center text-slate-400 italic">Nenhuma transação registrada.</td>
-                  </tr>
-                ) : (
-                  recentTransactions.map((tx) => (
-                    <TransactionRow
-                      key={tx.id}
-                      title={tx.description}
-                      subtitle={tx.accounts?.name || 'Geral'}
-                      category={tx.categories?.name || 'Sem Categoria'}
-                      categoryIcon={tx.categories?.icon}
-                      categoryColor={tx.categories?.color}
-                      bankIcon={tx.accounts?.icon}
-                      bankColor={tx.accounts?.color}
-                      origin={tx.is_ai ? 'WhatsApp IA' : 'Manual'}
-                      originIcon={tx.is_ai ? 'auto_awesome' : 'edit_note'}
-                      date={formatDate(tx.date)}
-                      value={`${tx.type === 'income' ? '+' : '-'} R$\u00A0${tx.value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-                      status={tx.status === 'confirmed' ? 'success' : 'review'}
-                      iconColor={tx.categories?.color || 'text-primary bg-blue-100 dark:bg-blue-900/30'}
-                      valueColor={tx.type === 'income' ? 'text-primary' : 'text-red-500'}
-                      isSpecial={tx.categories?.name === 'Devolução' || tx.description?.toLowerCase().includes('cheque devolvido')}
-                    />
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <TableHeader>
+              <TableHeadCell width="48px" className="text-center hidden sm:table-cell">
+                <div className="size-4 border border-slate-300 dark:border-slate-600 rounded mx-auto"></div>
+              </TableHeadCell>
+              <TableHeadCell>Descrição</TableHeadCell>
+              <TableHeadCell className="hidden lg:table-cell">Categoria</TableHeadCell>
+              <TableHeadCell className="hidden md:table-cell">Origem</TableHeadCell>
+              <TableHeadCell className="hidden sm:table-cell">Data</TableHeadCell>
+              <TableHeadCell align="right">Valor</TableHeadCell>
+              <TableHeadCell align="center" className="hidden xl:table-cell">Status</TableHeadCell>
+              <TableHeadCell align="right"></TableHeadCell>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableLoadingState colSpan={8} />
+              ) : recentTransactions.length === 0 ? (
+                <TableEmptyState colSpan={8} message="Nenhuma transação registrada." />
+              ) : (
+                recentTransactions.map((tx) => (
+                  <TransactionRow
+                    key={tx.id}
+                    title={tx.description}
+                    subtitle={tx.accounts?.name || 'Geral'}
+                    category={tx.categories?.name || 'Sem Categoria'}
+                    categoryIcon={tx.categories?.icon}
+                    categoryColor={tx.categories?.color}
+                    bankIcon={tx.accounts?.icon}
+                    bankColor={tx.accounts?.color}
+                    origin={tx.is_ai ? 'WhatsApp IA' : 'Manual'}
+                    originIcon={tx.is_ai ? 'auto_awesome' : 'edit_note'}
+                    date={formatDate(tx.date)}
+                    value={`${tx.type === 'income' ? '+' : '-'} R$\u00A0${tx.value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                    status={tx.status === 'confirmed' ? 'success' : 'review'}
+                    iconColor={tx.categories?.color || 'text-primary bg-blue-100 dark:bg-blue-900/30'}
+                    valueColor={tx.type === 'income' ? 'text-primary' : 'text-red-500'}
+                    isSpecial={tx.categories?.name === 'Devolução' || tx.description?.toLowerCase().includes('cheque devolvido')}
+                  />
+                ))
+              )}
+            </TableBody>
+          </Table>
         </div>
       </div>
     </div>
@@ -672,21 +880,17 @@ const TransactionRow = ({ title, subtitle, category, categoryIcon, categoryColor
   const isCheque = title?.toLowerCase().includes('cheque devolvido');
 
   return (
-    <tr
-      className={`
-        hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group relative overflow-hidden
-        ${isSpecial ? 'bg-amber-50/30 dark:bg-amber-900/5' : ''} 
-        ${rowBg || ''}
-      `}
+    <TableRow
+      className={`relative overflow-hidden ${isSpecial ? 'bg-amber-50/30 dark:bg-amber-900/5' : ''} ${rowBg || ''}`}
     >
       {/* Indicador Lateral de Ajuste */}
       {isSpecial && (
         <div className={`absolute left-0 top-0 bottom-0 w-[5px] ${isDevolucao ? 'bg-rose-500' : 'bg-amber-500'}`} />
       )}
-      <td className="px-6 py-4 text-center">
-        <div className="size-4 border border-slate-300 dark:border-slate-600 rounded group-hover:border-primary transition-colors"></div>
-      </td>
-      <td className="px-6 py-4">
+      <TableCell className="text-center hidden sm:table-cell">
+        <div className="size-4 border border-slate-300 dark:border-slate-600 rounded group-hover:border-primary transition-colors mx-auto"></div>
+      </TableCell>
+      <TableCell>
         <div className="flex items-center gap-3">
           <div className={`size-10 rounded-lg ${isDevolucao ? 'bg-rose-100 text-rose-600' : isCheque ? 'bg-amber-100 text-amber-600' : iconColor} flex items-center justify-center shrink-0 shadow-sm border border-white/20`}>
             {bankIcon && bankIcon.startsWith('/') ? (
@@ -708,8 +912,8 @@ const TransactionRow = ({ title, subtitle, category, categoryIcon, categoryColor
             <p className="text-xs text-slate-400">{subtitle}</p>
           </div>
         </div>
-      </td>
-      <td className="px-6 py-4">
+      </TableCell>
+      <TableCell className="hidden lg:table-cell">
         {isDevolucao ? (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 uppercase tracking-wider border border-rose-100 dark:border-rose-900/30">
             Devolução
@@ -723,18 +927,18 @@ const TransactionRow = ({ title, subtitle, category, categoryIcon, categoryColor
             {category}
           </span>
         )}
-      </td>
-      <td className="px-6 py-4">
+      </TableCell>
+      <TableCell className="hidden md:table-cell">
         <div className={`flex items-center gap-1.5 font-medium text-xs ${origin === 'WhatsApp IA' ? 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/10 px-2 py-1 rounded w-fit border border-green-100 dark:border-green-900/30' : 'text-slate-500'}`}>
           {origin === 'WhatsApp IA' ? <WhatsAppIcon className="size-4" /> : originIcon && <span className="material-symbols-outlined text-[16px]">{originIcon}</span>}
           {origin}
         </div>
-      </td>
-      <td className="px-6 py-4 text-slate-500">{date}</td>
-      <td className={`px-6 py-4 font-bold whitespace-nowrap ${valueColor || 'text-slate-900 dark:text-white'}`}>{value}</td>
-      <td className="px-6 py-4 text-center">
+      </TableCell>
+      <TableCell className="text-slate-500 hidden sm:table-cell">{date}</TableCell>
+      <TableCell className={`font-bold whitespace-nowrap ${valueColor || 'text-slate-900 dark:text-white'}`} align="right">{value}</TableCell>
+      <TableCell className="text-center hidden xl:table-cell">
         {status === 'success' ? (
-          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-300">
+          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-300 mx-auto">
             <span className="material-symbols-outlined text-[16px] filled">check</span>
           </span>
         ) : status === 'review_sale' ? (
@@ -752,13 +956,13 @@ const TransactionRow = ({ title, subtitle, category, categoryIcon, categoryColor
             Revisar
           </button>
         )}
-      </td>
-      <td className="px-6 py-4 text-right">
+      </TableCell>
+      <TableCell align="right">
         <button className="text-slate-400 hover:text-primary transition-colors">
           <span className="material-symbols-outlined">more_vert</span>
         </button>
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 };
 
