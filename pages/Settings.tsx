@@ -54,7 +54,7 @@ const Settings: React.FC = () => {
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
 
   // Webhook Constants (Same as IntegrationConfig)
-  const DEFAULT_WEBHOOK_URL = 'https://workflows.troven.com.br/webhook/financeiro-ai';
+  const DEFAULT_WEBHOOK_URL = 'https://workflows.troven.com.br/webhook/flowy';
   const DEFAULT_WEBHOOK_EVENTS = [
     "GROUPS_UPSERT",
     "MESSAGES_UPSERT"

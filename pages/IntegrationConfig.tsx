@@ -33,7 +33,7 @@ const IntegrationConfig: React.FC = () => {
   const [apiError, setApiError] = React.useState<{ title: string; message: string; details?: any } | null>(null);
 
   // Webhook Constants
-  const DEFAULT_WEBHOOK_URL = 'https://workflows.troven.com.br/webhook/financeiro-ai';
+  const DEFAULT_WEBHOOK_URL = 'https://workflows.troven.com.br/webhook/flowy';
   const DEFAULT_WEBHOOK_EVENTS = [
     "GROUPS_UPSERT",
     "MESSAGES_UPSERT"
