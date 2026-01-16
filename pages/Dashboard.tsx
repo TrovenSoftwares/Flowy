@@ -593,6 +593,9 @@ const Dashboard: React.FC = () => {
             <table className="w-full text-left text-sm text-slate-600 dark:text-slate-300">
               <thead className="bg-slate-50 dark:bg-slate-800 text-xs uppercase font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700">
                 <tr>
+                  <th className="px-6 py-4 w-12 text-center whitespace-nowrap">
+                    <div className="size-4 border border-slate-300 dark:border-slate-600 rounded"></div>
+                  </th>
                   <th className="px-6 py-4 whitespace-nowrap">Descrição</th>
                   <th className="px-6 py-4 whitespace-nowrap">Categoria</th>
                   <th className="px-6 py-4 whitespace-nowrap">Origem</th>
@@ -631,6 +634,7 @@ const Dashboard: React.FC = () => {
                       status={tx.status === 'confirmed' ? 'success' : 'review'}
                       iconColor={tx.categories?.color || 'text-primary bg-blue-100 dark:bg-blue-900/30'}
                       valueColor={tx.type === 'income' ? 'text-primary' : 'text-red-500'}
+                      isSpecial={tx.categories?.name === 'Devolução' || tx.description?.toLowerCase().includes('cheque devolvido')}
                     />
                   ))
                 )}
@@ -662,29 +666,63 @@ const ChartBar = ({ label, income, expense, highlighted }: any) => (
 );
 
 
-const TransactionRow = ({ title, subtitle, category, categoryIcon, categoryColor, bankIcon, bankColor, origin, originIcon, date, value, status, iconColor, valueColor, rowBg }: any) => {
+const TransactionRow = ({ title, subtitle, category, categoryIcon, categoryColor, bankIcon, bankColor, origin, originIcon, date, value, status, iconColor, valueColor, rowBg, isSpecial }: any) => {
   const navigate = useNavigate();
+  const isDevolucao = category === 'Devolução';
+  const isCheque = title?.toLowerCase().includes('cheque devolvido');
+
   return (
-    <tr className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group ${rowBg || ''}`}>
+    <tr
+      className={`
+        hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group relative overflow-hidden
+        ${isSpecial ? 'bg-amber-50/30 dark:bg-amber-900/5' : ''} 
+        ${rowBg || ''}
+      `}
+    >
+      {/* Indicador Lateral de Ajuste */}
+      {isSpecial && (
+        <div className={`absolute left-0 top-0 bottom-0 w-[5px] ${isDevolucao ? 'bg-rose-500' : 'bg-amber-500'}`} />
+      )}
+      <td className="px-6 py-4 text-center">
+        <div className="size-4 border border-slate-300 dark:border-slate-600 rounded group-hover:border-primary transition-colors"></div>
+      </td>
       <td className="px-6 py-4">
         <div className="flex items-center gap-3">
-          <div className={`size-10 rounded-lg ${iconColor} flex items-center justify-center shrink-0`}>
+          <div className={`size-10 rounded-lg ${isDevolucao ? 'bg-rose-100 text-rose-600' : isCheque ? 'bg-amber-100 text-amber-600' : iconColor} flex items-center justify-center shrink-0 shadow-sm border border-white/20`}>
             {bankIcon && bankIcon.startsWith('/') ? (
               <img src={bankIcon} alt={subtitle} className="size-full object-cover rounded-lg" />
             ) : (
-              <span className="material-symbols-outlined text-[20px]">{categoryIcon || 'payments'}</span>
+              <span className="material-symbols-outlined text-[20px]">{isDevolucao ? 'keyboard_return' : isCheque ? 'error' : (categoryIcon || 'payments')}</span>
             )}
           </div>
-          <div>
-            <p className="font-bold text-slate-900 dark:text-white truncate max-w-[200px]">{title}</p>
+          <div className="flex flex-col min-w-0">
+            <div className="flex items-center gap-2">
+              <p className="font-bold text-slate-900 dark:text-white truncate max-w-[180px]">{title}</p>
+              {isSpecial && (
+                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50">
+                  <span className="material-symbols-outlined text-[10px]">info</span>
+                  Ajuste
+                </span>
+              )}
+            </div>
             <p className="text-xs text-slate-400">{subtitle}</p>
           </div>
         </div>
       </td>
       <td className="px-6 py-4">
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium ${category === 'Pendente' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}>
-          {category}
-        </span>
+        {isDevolucao ? (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 uppercase tracking-wider border border-rose-100 dark:border-rose-900/30">
+            Devolução
+          </span>
+        ) : isCheque ? (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 uppercase tracking-wider border border-amber-100 dark:border-amber-900/30">
+            Cheque Devolvido
+          </span>
+        ) : (
+          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold ${category === 'Pendente' ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300' : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300'}`}>
+            {category}
+          </span>
+        )}
       </td>
       <td className="px-6 py-4">
         <div className={`flex items-center gap-1.5 font-medium text-xs ${origin === 'WhatsApp IA' ? 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/10 px-2 py-1 rounded w-fit border border-green-100 dark:border-green-900/30' : 'text-slate-500'}`}>

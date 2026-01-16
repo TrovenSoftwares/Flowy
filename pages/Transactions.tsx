@@ -13,9 +13,19 @@ import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { exportToExcel, readExcelFile, downloadExampleTemplate, formatExcelDate } from '../utils/excelUtils';
-import { SkeletonTable } from '../components/Skeleton';
-import Pagination from '../components/Pagination';
 import { PdfIcon, ExcelIcon, ImportIcon } from '../components/BrandedIcons';
+import Card from '../components/Card';
+import {
+  Table,
+  TableHeader,
+  TableHeadCell,
+  TableBody,
+  TableRow,
+  TableCell,
+  TableLoadingState,
+  TableEmptyState,
+  TablePagination
+} from '../components/Table';
 
 const Transactions: React.FC = () => {
   const navigate = useNavigate();
@@ -530,55 +540,47 @@ const Transactions: React.FC = () => {
       </div>
 
       {/* Table Area */}
-      <div className="bg-white dark:bg-slate-850 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[1000px]">
-            <thead>
-              <tr className="bg-gray-50 dark:bg-slate-900/50 border-b border-gray-200 dark:border-slate-700">
-                <th className="py-4 pl-6 pr-3 w-12 text-center">
-                  <input className="rounded border-gray-300 dark:border-slate-600 dark:bg-slate-800 text-primary focus:ring-primary/50 size-4" type="checkbox" />
-                </th>
-                <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Descrição / Conta</th>
-                <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Categoria</th>
-                <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500">Contato</th>
-                <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-center">Data</th>
-                <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-right">Valor</th>
-                <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-center">Status</th>
-                <th className="px-4 py-4 text-xs font-bold uppercase tracking-wider text-gray-500 text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
-              {loading ? (
-                <tr>
-                  <td colSpan={8} className="p-0">
-                    <SkeletonTable rows={itemsPerPage} columns={8} className="border-none rounded-none shadow-none" />
-                  </td>
-                </tr>
-              ) : paginatedTransactions.length === 0 ? (
-                <tr><td colSpan={8} className="py-12 text-center text-gray-400 italic">Nenhuma transação encontrada.</td></tr>
-              ) : (
-                paginatedTransactions.map((tx) => (
-                  <TransactionRow
-                    key={tx.id}
-                    tx={tx}
-                    onEdit={() => { setTransactionToEdit(tx); setIsEditModalOpen(true); }}
-                    onDelete={() => { setTransactionToDelete(tx.id); setIsDeleteModalOpen(true); }}
-                  />
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+      <Card noPadding>
+        <Table>
+          <TableHeader>
+            <TableHeadCell width="48px" className="text-center">
+              <input className="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-800 text-primary focus:ring-primary/50 size-4" type="checkbox" />
+            </TableHeadCell>
+            <TableHeadCell>Descrição / Conta</TableHeadCell>
+            <TableHeadCell>Categoria</TableHeadCell>
+            <TableHeadCell>Contato</TableHeadCell>
+            <TableHeadCell align="center">Data</TableHeadCell>
+            <TableHeadCell align="right">Valor</TableHeadCell>
+            <TableHeadCell align="center">Status</TableHeadCell>
+            <TableHeadCell align="right">Ações</TableHeadCell>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableLoadingState colSpan={8} />
+            ) : filteredTransactions.length === 0 ? (
+              <TableEmptyState colSpan={8} message="Nenhuma transação encontrada." icon="format_list_bulleted" />
+            ) : (
+              paginatedTransactions.map((tx) => (
+                <TransactionRow
+                  key={tx.id}
+                  tx={tx}
+                  onEdit={() => { setTransactionToEdit(tx); setIsEditModalOpen(true); }}
+                  onDelete={() => { setTransactionToDelete(tx.id); setIsDeleteModalOpen(true); }}
+                />
+              ))
+            )}
+          </TableBody>
+        </Table>
 
-        {/* Pagination Footer */}
-        <Pagination
+        <TablePagination
           currentPage={currentPage}
           totalPages={totalPages}
-          totalResults={filteredTransactions.length}
-          itemsPerPage={itemsPerPage}
           onPageChange={setCurrentPage}
+          totalItems={filteredTransactions.length}
+          itemsPerPage={itemsPerPage}
+          startIndex={startIndex}
         />
-      </div>
+      </Card>
 
       <ConfirmModal isOpen={isDeleteModalOpen} onClose={() => setIsDeleteModalOpen(false)} onConfirm={handleDelete} title="Excluir Transação" message="Tem certeza que deseja excluir esta transação? Esta ação não pode ser desfeita." confirmLabel="Excluir" type="danger" />
       <EditTransactionModal isOpen={isEditModalOpen} onClose={() => setIsEditModalOpen(false)} onSuccess={fetchTransactions} transaction={transactionToEdit} />
@@ -601,12 +603,23 @@ const StatCard = ({ label, value, trend, icon, iconColor, valueColor, trendColor
 
 const TransactionRow = ({ tx, onEdit, onDelete }: any) => {
   const navigate = useNavigate();
+  const isSpecial = tx.categories?.name === 'Devolução' || tx.description?.toLowerCase().includes('cheque devolvido');
+
   return (
-    <tr className="group hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors">
-      <td className="py-4 pl-6 pr-3 text-center">
-        <input className="rounded border-gray-300 dark:border-slate-600 dark:bg-slate-800 text-primary focus:ring-primary/50 size-4" type="checkbox" />
-      </td>
-      <td className="px-4 py-4">
+    <TableRow
+      className={`
+        relative overflow-hidden
+        ${isSpecial ? 'bg-amber-50/40 dark:bg-amber-900/5' : ''}
+      `}
+    >
+      {/* Indicador Lateral de Ajuste */}
+      {isSpecial && (
+        <div className={`absolute left-0 top-0 bottom-0 w-[5px] ${tx.categories?.name === 'Devolução' ? 'bg-rose-500' : 'bg-amber-500'}`} />
+      )}
+      <TableCell align="center">
+        <input className="rounded border-slate-300 dark:border-slate-600 dark:bg-slate-800 text-primary focus:ring-primary/50 size-4" type="checkbox" />
+      </TableCell>
+      <TableCell>
         <div className="flex items-center gap-3">
           <div className={`size-10 rounded-xl ${tx.accounts?.color || 'bg-primary'} flex items-center justify-center shrink-0 border border-white/20 shadow-sm relative overflow-hidden`}>
             {tx.accounts?.icon && tx.accounts.icon.startsWith('/') ? (
@@ -617,7 +630,15 @@ const TransactionRow = ({ tx, onEdit, onDelete }: any) => {
             <div className="absolute inset-0 bg-gradient-to-tr from-black/10 to-transparent pointer-events-none"></div>
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-bold text-slate-900 dark:text-white line-clamp-1">{tx.description}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-slate-900 dark:text-white line-clamp-1">{tx.description}</span>
+              {isSpecial && (
+                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800/50">
+                  <span className="material-symbols-outlined text-[10px]">info</span>
+                  Ajuste
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-400">{tx.accounts?.name || '---'}</span>
               {tx.is_ai && (
@@ -629,25 +650,46 @@ const TransactionRow = ({ tx, onEdit, onDelete }: any) => {
             </div>
           </div>
         </div>
-      </td>
-      <td className="px-4 py-4">
-        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 uppercase tracking-wider">
-          {tx.categories?.name || 'S/ Categoria'}
-        </span>
-      </td>
-      <td className="px-4 py-4">
-        <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
-          {tx.contacts?.name && <span className="material-symbols-outlined text-[16px]">person</span>}
-          {tx.contacts?.name || '---'}
+      </TableCell>
+      <TableCell>
+        {(() => {
+          const isDevolucao = tx.categories?.name === 'Devolução';
+          const isCheque = tx.description?.toLowerCase().includes('cheque devolvido');
+
+          if (isDevolucao) return (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 uppercase tracking-wider border border-rose-100 dark:border-rose-900/30">
+              <span className="material-symbols-outlined text-[14px]">keyboard_return</span>
+              {tx.categories?.name}
+            </span>
+          );
+
+          if (isCheque) return (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 uppercase tracking-wider border border-amber-100 dark:border-amber-900/30">
+              <span className="material-symbols-outlined text-[14px]">error</span>
+              Cheque Devolvido
+            </span>
+          );
+
+          return (
+            <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 uppercase tracking-wider font-montserrat">
+              {tx.categories?.name || 'S/ Categoria'}
+            </span>
+          );
+        })()}
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center gap-2 text-xs font-bold text-slate-500 max-w-[200px]">
+          {tx.contacts?.name && <span className="material-symbols-outlined text-[16px] shrink-0">person</span>}
+          <span className="truncate">{tx.contacts?.name || '---'}</span>
         </div>
-      </td>
-      <td className="px-4 py-4 text-center text-xs font-bold text-slate-500 whitespace-nowrap">
+      </TableCell>
+      <TableCell align="center" className="text-xs font-bold text-slate-500 whitespace-nowrap">
         {formatDate(tx.date)}
-      </td>
-      <td className={`px-4 py-4 text-sm font-bold text-right whitespace-nowrap ${tx.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
+      </TableCell>
+      <TableCell align="right" className={`text-sm font-bold whitespace-nowrap ${tx.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
         {tx.type === 'income' ? '+' : '-'} {"R$\u00A0"}{Number(tx.value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-      </td>
-      <td className="px-4 py-4 text-center">
+      </TableCell>
+      <TableCell align="center">
         <div className="flex justify-center">
           {tx.status === 'confirmed' ? (
             <span className="size-6 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
@@ -659,14 +701,14 @@ const TransactionRow = ({ tx, onEdit, onDelete }: any) => {
             </button>
           )}
         </div>
-      </td>
-      <td className="px-4 py-4 text-right">
+      </TableCell>
+      <TableCell align="right">
         <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button onClick={onEdit} className="p-1.5 text-slate-400 hover:text-primary transition-colors"><span className="material-symbols-outlined text-lg">edit</span></button>
-          <button onClick={onDelete} className="p-1.5 text-slate-400 hover:text-rose-500 transition-colors"><span className="material-symbols-outlined text-lg">delete</span></button>
+          <button onClick={onEdit} className="p-1.5 text-slate-400 hover:text-primary transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700 rounded-lg shadow-sm bg-white dark:bg-slate-800"><span className="material-symbols-outlined text-lg">edit</span></button>
+          <button onClick={onDelete} className="p-1.5 text-slate-400 hover:text-rose-500 transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700 rounded-lg shadow-sm bg-white dark:bg-slate-800"><span className="material-symbols-outlined text-lg">delete</span></button>
         </div>
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 };
 

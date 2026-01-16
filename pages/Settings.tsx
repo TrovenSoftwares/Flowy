@@ -147,6 +147,7 @@ const Settings: React.FC = () => {
       const { data, error } = await supabase
         .from('system_changelogs')
         .select('*')
+        .order('version', { ascending: false })
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -155,23 +156,19 @@ const Settings: React.FC = () => {
           const mockData = [
             {
               version: '1.2.2',
-              date: '15 de Janeiro de 2026',
-              changes: [
-                '🚀 Novo Dashboard Comparativo com análise de crescimento real vs mês anterior.',
-                '⌨️ Guia de Atalhos integrado (Ctrl + /) para navegação ultra-rápida.',
-                '🎓 Tutorial Interativo (Onboarding) para novos usuários e exploração guiada.',
-                '📊 Exportação de PDF com gráficos de fluxo de caixa para relatórios premium.',
-                '🔍 Busca Global (Ctrl + K) aprimorada com resultados em tempo real do banco de dados.',
-                '✨ Gráfico de despesas interativo com animações suaves e detalhes no hover.'
-              ]
+              type: 'new',
+              title: 'Nova Experiência Flowy',
+              description: 'Lançamento da v1.2.2 com Dashboard Comparativo, Atalhos de Teclado, Tutorial Interativo, Exportação de Gráficos em PDF e Busca Global em Tempo Real.'
             },
             {
               version: '1.2.1',
-              type: 'new', title: 'Rebranding Flowy', description: 'Transformação completa da identidade visual do sistema de Phyr para Flowy, incluindo logos, ícones, e-mails e exportações.'
+              type: 'new',
+              title: 'Rebranding Flowy',
+              description: 'Transformação completa da identidade visual do sistema de Phyr para Flowy, incluindo logos, ícones, e-mails e exportações.'
             },
-            { id: 2, version: '1.1.0', type: 'improvement', title: 'Responsividade Tablet', description: 'Otimização de grids e menus para tablets, garantindo uma experiência premium em telas intermediárias.' },
-            { id: 3, version: '1.1.0', type: 'improvement', title: 'Segurança & DevTools', description: 'Implementação de bloqueios contra inspeção de código e atalhos de desenvolvedor para proteger a propriedade intelectual.' },
-            { id: 4, version: '1.0.1', type: 'new', title: 'Revisão Inteligente WhatsApp', description: 'Integração completa com WhatsApp para processamento automático de transações financeiras via IA.' }
+            { version: '1.1.0', type: 'improvement', title: 'Responsividade Tablet', description: 'Otimização de grids e menus para tablets, garantindo uma experiência premium em telas intermediárias.' },
+            { version: '1.1.0', type: 'improvement', title: 'Segurança & DevTools', description: 'Implementação de bloqueios contra inspeção de código e atalhos de desenvolvedor para proteger a propriedade intelectual.' },
+            { version: '1.0.1', type: 'new', title: 'Revisão Inteligente WhatsApp', description: 'Integração completa com WhatsApp para processamento automático de transações financeiras via IA.' }
           ];
           setChangelogs(mockData);
           if (mockData.length > 0) {

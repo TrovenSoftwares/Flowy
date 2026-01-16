@@ -522,9 +522,9 @@ const ContactRow = ({ contact, onEdit, onDelete, onView }: any) => {
               <span className="text-primary font-bold text-sm">{contact.name.substring(0, 2).toUpperCase()}</span>
             </div>
           )}
-          <div className="flex flex-col">
-            <span className="text-sm font-bold text-slate-900 dark:text-white line-clamp-1">{contact.name}</span>
-            <span className="text-xs text-slate-400">{formatCpfCnpj(contact.id_number)}</span>
+          <div className="flex flex-col min-w-0 max-w-[200px]">
+            <span className="text-sm font-bold text-slate-900 dark:text-white truncate">{contact.name}</span>
+            <span className="text-[10px] font-medium text-slate-400 whitespace-nowrap">{formatCpfCnpj(contact.id_number)}</span>
           </div>
         </div>
       </TableCell>
@@ -544,7 +544,7 @@ const ContactRow = ({ contact, onEdit, onDelete, onView }: any) => {
         R$ {contact.totalReceived.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
       </TableCell>
       <TableCell align="right">
-        <span className={`text-sm font-bold ${contact.balance > 0 ? 'text-amber-600' : contact.balance < 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
+        <span className={`text-sm font-bold whitespace-nowrap ${contact.balance > 0 ? 'text-amber-600' : contact.balance < 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
           R$ {contact.balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
         </span>
       </TableCell>
